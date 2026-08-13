@@ -5,6 +5,7 @@ Embla is a userspace operating system inspired by Unix-like systems. It provides
 ## Vision
 
 The goal of Embla is to provide:
+
 - **Process Management**: A robust system for creating, transitioning, and managing process states (Ready, Running, Waiting, etc.).
 - **Scheduling**: Efficient scheduling algorithms to handle concurrent task execution.
 - **Memory Management**: Dedicated memory management systems within the userspace environment.
@@ -13,6 +14,7 @@ The goal of Embla is to provide:
 ## Status
 
 Currently, the project is in its initial scaffold phase with:
+
 - Core Process Manager and Scheduler infrastructure.
 - Memory Management and String Handling utilities.
 - Basic logging system.
@@ -21,7 +23,11 @@ Currently, the project is in its initial scaffold phase with:
 ## Getting Started
 
 To build the current snapshot:
+
 ```bash
 make
 ```
-The binary will be located in `build/embla`.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
