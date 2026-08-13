@@ -14,6 +14,9 @@ struct Process
 	ProcessState state;
 
 	char *name;
+
+	int exit_code;
+	int term_signal;
 };
 
 Process *process_create(ProcessId id, const char *name)
@@ -42,6 +45,9 @@ Process *process_create(ProcessId id, const char *name)
 		free(process);
 		return NULL;
 	}
+
+	process->exit_code = -1;
+	process->term_signal = -1;
 
 	return process;
 }
@@ -77,16 +83,6 @@ HostProcessId process_get_host_id(const Process *process)
 	return process->host_id;
 }
 
-ProcessState process_get_state(const Process *process)
-{
-	if (process == NULL)
-	{
-		return PROCESS_TERMINATED;
-	}
-
-	return process->state;
-}
-
 int process_set_host_id(Process *process, HostProcessId host_id)
 {
 	if (process == NULL)
@@ -99,16 +95,14 @@ int process_set_host_id(Process *process, HostProcessId host_id)
 	return 0;
 }
 
-int process_set_state(Process *process, ProcessState state)
+ProcessState process_get_state(const Process *process)
 {
 	if (process == NULL)
 	{
-		return -1;
+		return PROCESS_TERMINATED;
 	}
 
-	process->state = state;
-
-	return 0;
+	return process->state;
 }
 
 static int process_can_transition(ProcessState current, ProcessState next)
@@ -172,4 +166,48 @@ const char *process_state_name(ProcessState state)
 	}
 
 	return "UNKNOWN";
+}
+
+int process_get_exit_code(const Process *process)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	return process->exit_code;
+}
+
+int process_set_exit_code(Process *process, int exit_code)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->exit_code = exit_code;
+
+	return 0;
+}
+
+int process_get_term_signal(const Process *process)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	return process->term_signal;
+}
+
+int process_set_term_signal(Process *process, int term_signal)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->term_signal = term_signal;
+
+	return 0;
 }

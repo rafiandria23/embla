@@ -5,7 +5,7 @@
 #include <sys/types.h>
 
 #define EMBLA_INVALID_PID 0
-#define EMBLA_INVALID_HOST_PID 0;
+#define EMBLA_INVALID_HOST_PID 0
 
 typedef uint32_t ProcessId;
 typedef pid_t HostProcessId;
@@ -25,15 +25,19 @@ Process *process_create(ProcessId id, const char *name);
 void process_destroy(Process *process);
 
 ProcessId process_get_id(const Process *process);
+
 HostProcessId process_get_host_id(const Process *process);
-
-ProcessState process_get_state(const Process *process);
-
 int process_set_host_id(Process *process, HostProcessId host_id);
 
-int process_set_state(Process *process, ProcessState state);
+ProcessState process_get_state(const Process *process);
 int process_transition(Process *process, ProcessState next_state);
 
 const char *process_state_name(ProcessState state);
+
+int process_get_exit_code(const Process *process);
+int process_set_exit_code(Process *process, int exit_code);
+
+int process_get_term_signal(const Process *process);
+int process_set_term_signal(Process *process, int term_signal);
 
 #endif

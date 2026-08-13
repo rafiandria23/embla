@@ -19,9 +19,14 @@ Process *process_manager_create_process(ProcessManager *manager, const char *nam
  * and becomes invalid when that process is destroyed.
  */
 Process *process_manager_get(const ProcessManager *manager, ProcessId id);
+Process *process_manager_get_by_host_id(const ProcessManager *manager, HostProcessId host_id);
 
 size_t process_manager_count(const ProcessManager *manager);
 
 int process_manager_destroy_process(ProcessManager *manager, ProcessId id);
+
+Process *process_manager_first(ProcessManager *manager);
+
+Process *process_manager_next(ProcessManager *manager);
 
 #endif

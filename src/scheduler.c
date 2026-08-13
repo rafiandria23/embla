@@ -78,6 +78,49 @@ int scheduler_add(Scheduler *scheduler, Process *process)
 	return 0;
 }
 
+int scheduler_remove(Scheduler *scheduler, Process *process)
+{
+	if (scheduler == NULL || process == NULL)
+	{
+		return -1;
+	}
+
+	if (scheduler->current == process)
+	{
+		scheduler->current = NULL;
+		return 0;
+	}
+
+	for (size_t i = 0; i < scheduler->count; i++)
+	{
+		size_t index = (scheduler->head + i) % scheduler->capacity;
+
+		if (scheduler->ready_queue[index] != process)
+		{
+			continue;
+		}
+
+		// Shift all subsequent elements one position toward the removed element
+		for (size_t j = i; j + 1 < scheduler->count; j++)
+		{
+			size_t current_index = (scheduler->head + j) % scheduler->capacity;
+			size_t next_index = (scheduler->head + j + 1) % scheduler->capacity;
+
+			scheduler->ready_queue[current_index] = scheduler->ready_queue[next_index];
+		}
+
+		size_t last_index = (scheduler->head + scheduler->count - 1) % scheduler->capacity;
+
+		scheduler->ready_queue[last_index] = NULL;
+		scheduler->tail = (scheduler->tail + scheduler->capacity - 1) % scheduler->capacity;
+		scheduler->count--;
+
+		return 0;
+	}
+
+	return -1;
+}
+
 Process *scheduler_next(Scheduler *scheduler)
 {
 	if (scheduler == NULL)

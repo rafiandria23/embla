@@ -14,6 +14,8 @@ struct ProcessManager
 	size_t capacity;
 
 	ProcessId next_pid;
+
+	size_t iterator_index;
 };
 
 ProcessManager *process_manager_create(void)
@@ -38,6 +40,7 @@ ProcessManager *process_manager_create(void)
 	manager->count = 0;
 	manager->capacity = PROCESS_MANAGER_INITIAL_CAPACITY;
 	manager->next_pid = 1;
+	manager->iterator_index = 0;
 
 	return manager;
 }
@@ -122,6 +125,26 @@ Process *process_manager_get(const ProcessManager *manager, ProcessId id)
 	return NULL;
 }
 
+Process *process_manager_get_by_host_id(const ProcessManager *manager, HostProcessId host_id)
+{
+	if (manager == NULL || host_id == EMBLA_INVALID_HOST_PID)
+	{
+		return NULL;
+	}
+
+	for (size_t i = 0; i < manager->count; i++)
+	{
+		Process *process = manager->processes[i];
+
+		if (process_get_host_id(process) == host_id)
+		{
+			return process;
+		}
+	}
+
+	return NULL;
+}
+
 size_t process_manager_count(const ProcessManager *manager)
 {
 	if (manager == NULL)
@@ -156,9 +179,39 @@ int process_manager_destroy_process(ProcessManager *manager, ProcessId id)
 		manager->processes[last] = NULL;
 
 		manager->count--;
+		manager->iterator_index = 0;
 
 		return 0;
 	}
 
 	return -1;
+}
+
+Process *process_manager_first(ProcessManager *manager)
+{
+	if (manager == NULL || manager->count == 0)
+	{
+		return NULL;
+	}
+
+	manager->iterator_index = 0;
+
+	return manager->processes[manager->iterator_index];
+}
+
+Process *process_manager_next(ProcessManager *manager)
+{
+	if (manager == NULL)
+	{
+		return NULL;
+	}
+
+	if (manager->iterator_index + 1 >= manager->count)
+	{
+		return NULL;
+	}
+
+	manager->iterator_index++;
+
+	return manager->processes[manager->iterator_index];
 }
