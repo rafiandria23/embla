@@ -80,6 +80,46 @@ int executor_spawn(
 	return 0;
 }
 
+int executor_terminate(Executor *executor, Process *process)
+{
+	if (executor == NULL || process == NULL)
+	{
+		return -1;
+	}
+
+	HostProcessId host_id = process_get_host_id(process);
+
+	if (host_id == EMBLA_INVALID_HOST_PID)
+	{
+		return -1;
+	}
+
+	if (kill(host_id, SIGKILL) != 0)
+	{
+		if (errno != ESRCH)
+		{
+			embla_log_error("failed to terminate process");
+			return -1;
+		}
+	}
+
+	int wait_status;
+	pid_t result;
+
+	do
+	{
+		result = waitpid(host_id, &wait_status, 0);
+	} while (result == -1 && errno == EINTR);
+
+	if (result == -1)
+	{
+		embla_log_error("waitpid failed while terminating process");
+		return -1;
+	}
+
+	return 0;
+}
+
 int executor_wait(Executor *executor, Process *process, int *status)
 {
 	if (executor == NULL || process == NULL)

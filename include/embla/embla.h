@@ -25,4 +25,10 @@ Executor *embla_executor(Embla *embla);
 EmblaState embla_get_state(const Embla *embla);
 const char *embla_state_name(EmblaState state);
 
+int embla_spawn(
+	Embla *embla,
+	const char *name,
+	const char *path,
+	char *const argv[]);
+
 #endif

@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -125,21 +126,63 @@ static int embla_shutdown(Embla *embla)
 	return 0;
 }
 
-static int embla_reap_process(Embla *embla, Process *process)
+static int embla_handle_child_exit(Embla *embla, HostProcessId host_id, int wait_status)
 {
-	if (embla == NULL || process == NULL)
+	if (embla == NULL)
 	{
 		return -1;
 	}
 
-	if (process_get_state(process) != PROCESS_TERMINATED)
+	Process *process = process_manager_get_by_host_id(embla->process_manager, host_id);
+
+	if (process == NULL)
 	{
+		embla_log_error("received exit status for unknown process");
+		return -1;
+	}
+
+	if (WIFEXITED(wait_status))
+	{
+		if (process_set_exit_code(process, WEXITSTATUS(wait_status)) != 0)
+		{
+			embla_log_error("failed to set process exit code");
+			return -1;
+		}
+	}
+	else if (WIFSIGNALED(wait_status))
+	{
+		if (process_set_term_signal(process, WTERMSIG(wait_status)) != 0)
+		{
+			embla_log_error("failed to set process termination signal");
+			return -1;
+		}
+	}
+	else
+	{
+		return 0;
+	}
+
+	if (process_transition(process, PROCESS_TERMINATED) != 0)
+	{
+		embla_log_error("failed to transition process");
 		return -1;
 	}
 
 	ProcessId id = process_get_id(process);
 
-	return process_manager_destroy_process(embla->process_manager, id);
+	if (scheduler_remove(embla->scheduler, process) != 0)
+	{
+		embla_log_error("failed to remove process from scheduler");
+		return -1;
+	}
+
+	if (process_manager_destroy_process(embla->process_manager, id) != 0)
+	{
+		embla_log_error("failed to destroy terminated process");
+		return -1;
+	}
+
+	return 0;
 }
 
 int embla_run(Embla *embla)
@@ -163,44 +206,32 @@ int embla_run(Embla *embla)
 		return -1;
 	}
 
-	if (scheduler_dispatch(embla->scheduler) != 0)
-	{
-		embla_log_error("failed to dispatch init process");
-
-		embla->state = EMBLA_STOPPED;
-
-		return -1;
-	}
-
 	while (embla->state == EMBLA_RUNNING)
 	{
-		Process *process = scheduler_current(embla->scheduler);
+		HostProcessId host_id;
+		int wait_status;
 
-		if (process == NULL)
-		{
-			embla_stop(embla);
-			break;
-		}
-
-		int result = executor_poll(embla->executor, process);
+		int result = executor_poll_any(embla->executor, &host_id, &wait_status);
 
 		if (result < 0)
 		{
+			embla_log_error("failed to poll child processes");
 			embla->state = EMBLA_STOPPED;
 			return -1;
 		}
 
 		if (result == 1)
 		{
-			if (embla_reap_process(embla, process) != 0)
+			if (embla_handle_child_exit(embla, host_id, wait_status) != 0)
 			{
-				embla_log_error("failed to reap process");
-
 				embla->state = EMBLA_STOPPED;
-
 				return -1;
 			}
+		}
 
+		if (process_manager_count(embla->process_manager) == 0)
+		{
+			embla_stop(embla);
 			break;
 		}
 
@@ -216,6 +247,7 @@ int embla_run(Embla *embla)
 		if (embla_shutdown(embla) != 0)
 		{
 			embla_log_error("failed to shut down Embla");
+
 			return -1;
 		}
 	}
@@ -312,4 +344,64 @@ const char *embla_state_name(EmblaState state)
 	default:
 		return "UNKNOWN";
 	}
+}
+
+int embla_spawn(
+	Embla *embla,
+	const char *name,
+	const char *path,
+	char *const argv[])
+{
+	if (
+		embla == NULL ||
+		name == NULL ||
+		path == NULL ||
+		argv == NULL)
+	{
+		return -1;
+	}
+
+	Process *process = process_manager_create_process(embla->process_manager, name);
+
+	if (process == NULL)
+	{
+		embla_log_error("failed to create process");
+		return -1;
+	}
+
+	if (executor_spawn(
+			embla->executor,
+			process,
+			path,
+			argv) != 0)
+	{
+		embla_log_error("failed to spawn process");
+
+		ProcessId id = process_get_id(process);
+
+		process_manager_destroy_process(embla->process_manager, id);
+
+		return -1;
+	}
+
+	if (scheduler_add(embla->scheduler, process) != 0)
+	{
+		embla_log_error("failed to add process to scheduler");
+
+		// Terminate before destroying Embla object
+		HostProcessId host_id = process_get_host_id(process);
+
+		if (host_id != EMBLA_INVALID_HOST_PID)
+		{
+			kill(host_id, SIGKILL);
+		}
+
+		ProcessId id = process_get_id(process);
+
+		process_manager_destroy_process(embla->process_manager, id);
+
+		return -1;
+	}
+
+	return 0;
 }
