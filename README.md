@@ -16,6 +16,7 @@ The goal of Embla is to provide:
 Currently, the project is in its initial scaffold phase with:
 
 - Core Process Manager and Scheduler infrastructure.
+- Executor for spawning and managing host OS processes as Embla processes, including child reaping via `embla_spawn()`.
 - Memory Management and String Handling utilities.
 - Basic logging system.
 - Demonstration of task dispatching in `main.c`.
