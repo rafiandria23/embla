@@ -4,6 +4,7 @@
 #include "embla/log.h"
 #include "embla/process_manager.h"
 #include "embla/scheduler.h"
+#include "embla/executor.h"
 
 struct Embla
 {
@@ -11,6 +12,7 @@ struct Embla
 
 	ProcessManager *process_manager;
 	Scheduler *scheduler;
+	Executor *executor;
 };
 
 Embla *embla_create(void)
@@ -48,6 +50,18 @@ Embla *embla_create(void)
 		return NULL;
 	}
 
+	embla->executor = executor_create();
+
+	if (embla->executor == NULL)
+	{
+		scheduler_destroy(embla->scheduler);
+		process_manager_destroy(embla->process_manager);
+
+		free(embla);
+
+		return NULL;
+	}
+
 	embla_log_info("runtime created");
 
 	return embla;
@@ -76,6 +90,7 @@ void embla_destroy(Embla *embla)
 
 	embla_log_info("runtime shutting down");
 
+	executor_destroy(embla->executor);
 	scheduler_destroy(embla->scheduler);
 	process_manager_destroy(embla->process_manager);
 

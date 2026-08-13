@@ -9,7 +9,10 @@
 struct Process
 {
 	ProcessId id;
+	HostProcessId host_id;
+
 	ProcessState state;
+
 	char *name;
 };
 
@@ -64,6 +67,16 @@ ProcessId process_get_id(const Process *process)
 	return process->id;
 }
 
+HostProcessId process_get_host_id(const Process *process)
+{
+	if (process == NULL)
+	{
+		return EMBLA_INVALID_HOST_PID;
+	}
+
+	return process->host_id;
+}
+
 ProcessState process_get_state(const Process *process)
 {
 	if (process == NULL)
@@ -72,6 +85,18 @@ ProcessState process_get_state(const Process *process)
 	}
 
 	return process->state;
+}
+
+int process_set_host_id(Process *process, HostProcessId host_id)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->host_id = host_id;
+
+	return 0;
 }
 
 int process_set_state(Process *process, ProcessState state)

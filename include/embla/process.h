@@ -2,10 +2,13 @@
 #define EMBLA_PROCESS_H
 
 #include <stdint.h>
+#include <sys/types.h>
 
 #define EMBLA_INVALID_PID 0
+#define EMBLA_INVALID_HOST_PID 0;
 
 typedef uint32_t ProcessId;
+typedef pid_t HostProcessId;
 
 typedef enum
 {
@@ -22,7 +25,11 @@ Process *process_create(ProcessId id, const char *name);
 void process_destroy(Process *process);
 
 ProcessId process_get_id(const Process *process);
+HostProcessId process_get_host_id(const Process *process);
+
 ProcessState process_get_state(const Process *process);
+
+int process_set_host_id(Process *process, HostProcessId host_id);
 
 int process_set_state(Process *process, ProcessState state);
 int process_transition(Process *process, ProcessState next_state);
