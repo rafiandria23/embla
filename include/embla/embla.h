@@ -1,10 +1,12 @@
 #ifndef EMBLA_EMBLA_H
 #define EMBLA_EMBLA_H
 
+#include "embla/executor.h"
+#include "embla/process_manager.h"
+#include "embla/process.h"
+#include "embla/scheduler.h"
+
 typedef struct Embla Embla;
-typedef struct ProcessManager ProcessManager;
-typedef struct Scheduler Scheduler;
-typedef struct Executor Executor;
 
 typedef enum
 {
@@ -25,8 +27,15 @@ Executor *embla_executor(Embla *embla);
 EmblaState embla_get_state(const Embla *embla);
 const char *embla_state_name(EmblaState state);
 
-int embla_spawn(
+Process *embla_spawn(
 	Embla *embla,
+	const char *name,
+	const char *path,
+	char *const argv[]);
+
+Process *embla_spawn_child(
+	Embla *embla,
+	Process *parent,
 	const char *name,
 	const char *path,
 	char *const argv[]);

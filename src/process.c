@@ -9,6 +9,7 @@
 struct Process
 {
 	ProcessId id;
+	ProcessId parent_id;
 	HostProcessId host_id;
 
 	ProcessState state;
@@ -19,7 +20,10 @@ struct Process
 	int term_signal;
 };
 
-Process *process_create(ProcessId id, const char *name)
+Process *process_create(
+	ProcessId id,
+	ProcessId parent_id,
+	const char *name)
 {
 	if (id == EMBLA_INVALID_PID || name == NULL)
 	{
@@ -35,6 +39,7 @@ Process *process_create(ProcessId id, const char *name)
 	}
 
 	process->id = id;
+	process->parent_id = parent_id;
 	process->state = PROCESS_CREATED;
 
 	process->name = embla_strdup(name);
@@ -73,6 +78,16 @@ ProcessId process_get_id(const Process *process)
 	return process->id;
 }
 
+ProcessId process_get_parent_id(const Process *process)
+{
+	if (process == NULL)
+	{
+		return EMBLA_INVALID_PID;
+	}
+
+	return process->parent_id;
+}
+
 HostProcessId process_get_host_id(const Process *process)
 {
 	if (process == NULL)
@@ -105,7 +120,9 @@ ProcessState process_get_state(const Process *process)
 	return process->state;
 }
 
-static int process_can_transition(ProcessState current, ProcessState next)
+static int process_can_transition(
+	ProcessState current,
+	ProcessState next)
 {
 	switch (current)
 	{
@@ -113,13 +130,17 @@ static int process_can_transition(ProcessState current, ProcessState next)
 		return next == PROCESS_READY;
 
 	case PROCESS_READY:
-		return next == PROCESS_RUNNING;
+		return next == PROCESS_RUNNING ||
+			   next == PROCESS_TERMINATED;
 
 	case PROCESS_RUNNING:
-		return next == PROCESS_READY || next == PROCESS_BLOCKED || next == PROCESS_TERMINATED;
+		return next == PROCESS_READY ||
+			   next == PROCESS_BLOCKED ||
+			   next == PROCESS_TERMINATED;
 
 	case PROCESS_BLOCKED:
-		return next == PROCESS_READY || next == PROCESS_TERMINATED;
+		return next == PROCESS_READY ||
+			   next == PROCESS_TERMINATED;
 
 	case PROCESS_TERMINATED:
 		return 0;
@@ -208,6 +229,18 @@ int process_set_term_signal(Process *process, int term_signal)
 	}
 
 	process->term_signal = term_signal;
+
+	return 0;
+}
+
+int process_set_parent_id(Process *process, ProcessId parent_id)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->parent_id = parent_id;
 
 	return 0;
 }

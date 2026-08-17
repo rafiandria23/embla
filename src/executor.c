@@ -243,31 +243,39 @@ int executor_poll(Executor *executor, Process *process)
 	return 1;
 }
 
-int executor_poll_any(Executor *executor, HostProcessId *host_id, int *status)
+int executor_poll_any(
+	Executor *executor,
+	HostProcessId *host_id,
+	int *status)
 {
-	if (executor == NULL)
+	if (
+		executor == NULL ||
+		host_id == NULL ||
+		status == NULL)
 	{
 		return -1;
 	}
 
 	int wait_status = 0;
 
-	pid_t result;
+	pid_t result = waitpid(
+		-1,
+		&wait_status,
+		WNOHANG);
 
-	do
-	{
-		result = waitpid(-1, &wait_status, WNOHANG);
-	} while (result == -1 && errno == EINTR);
-
-	if (result == -1)
+	if (result < 0)
 	{
 		if (errno == ECHILD)
 		{
 			return 0;
 		}
 
-		embla_log_error("waitpid failed");
+		if (errno == EINTR)
+		{
+			return 0;
+		}
 
+		embla_log_error("waitpid failed");
 		return -1;
 	}
 
@@ -276,15 +284,8 @@ int executor_poll_any(Executor *executor, HostProcessId *host_id, int *status)
 		return 0;
 	}
 
-	if (host_id == NULL)
-	{
-		*host_id = result;
-	}
-
-	if (status != NULL)
-	{
-		*status = wait_status;
-	}
+	*host_id = (HostProcessId)result;
+	*status = wait_status;
 
 	return 1;
 }

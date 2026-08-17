@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#define EMBLA_INVALID_PID 0
+#define EMBLA_ROOT_PID 0
+#define EMBLA_INVALID_PID UINT32_MAX
 #define EMBLA_INVALID_HOST_PID 0
 
 typedef uint32_t ProcessId;
@@ -21,10 +22,15 @@ typedef enum
 
 typedef struct Process Process;
 
-Process *process_create(ProcessId id, const char *name);
+Process *process_create(
+	ProcessId id,
+	ProcessId parent_id,
+	const char *name);
+
 void process_destroy(Process *process);
 
 ProcessId process_get_id(const Process *process);
+ProcessId process_get_parent_id(const Process *process);
 
 HostProcessId process_get_host_id(const Process *process);
 int process_set_host_id(Process *process, HostProcessId host_id);
@@ -39,5 +45,7 @@ int process_set_exit_code(Process *process, int exit_code);
 
 int process_get_term_signal(const Process *process);
 int process_set_term_signal(Process *process, int term_signal);
+
+int process_set_parent_id(Process *process, ProcessId parent_id);
 
 #endif
