@@ -83,7 +83,7 @@ static int embla_shutdown(Embla *embla)
 	return 0;
 }
 
-static int embla_handle_child_exit(
+static int embla_handle_child_event(
 	Embla *embla,
 	HostProcessId host_id,
 	int wait_status)
@@ -99,7 +99,7 @@ static int embla_handle_child_exit(
 
 	if (process == NULL)
 	{
-		embla_log_error("received exit status for unknown process");
+		embla_log_error("received event for unknown process");
 		return -1;
 	}
 
@@ -109,25 +109,41 @@ static int embla_handle_child_exit(
 				process,
 				WEXITSTATUS(wait_status)) != 0)
 		{
-			embla_log_error("failed to set process exit code");
 			return -1;
 		}
+
+		goto terminated;
 	}
-	else if (WIFSIGNALED(wait_status))
+
+	if (WIFSIGNALED(wait_status))
 	{
 		if (process_set_term_signal(
 				process,
 				WTERMSIG(wait_status)) != 0)
 		{
-			embla_log_error("failed to set process termination signal");
 			return -1;
 		}
-	}
-	else
-	{
-		return 0;
+
+		goto terminated;
 	}
 
+	if (WIFSTOPPED(wait_status))
+	{
+		return process_transition(
+			process,
+			PROCESS_STOPPED);
+	}
+
+	if (WIFCONTINUED(wait_status))
+	{
+		return process_transition(
+			process,
+			PROCESS_RUNNING);
+	}
+
+	return 0;
+
+terminated:
 	if (process_transition(
 			process,
 			PROCESS_TERMINATED) != 0)
@@ -149,7 +165,7 @@ static int embla_handle_child_exit(
 			embla->scheduler,
 			process) != 0)
 	{
-		embla_log_error("failed to remove process from scheduler");
+		embla_log_error("failed to remove terminated process");
 		return -1;
 	}
 
@@ -199,7 +215,7 @@ int embla_run(Embla *embla)
 
 		if (result == 1)
 		{
-			if (embla_handle_child_exit(
+			if (embla_handle_child_event(
 					embla,
 					host_id,
 					wait_status) != 0)
@@ -449,4 +465,74 @@ Process *embla_spawn_child(
 		name,
 		path,
 		argv);
+}
+
+int embla_terminate(
+	Embla *embla,
+	Process *process)
+{
+	if (
+		embla == NULL ||
+		process == NULL)
+	{
+		return -1;
+	}
+
+	if (process_get_state(process) == PROCESS_TERMINATED)
+	{
+		return -1;
+	}
+
+	return executor_signal(
+		embla->executor,
+		process,
+		SIGTERM);
+}
+
+int embla_stop_process(
+	Embla *embla,
+	Process *process)
+{
+	if (
+		embla == NULL ||
+		process == NULL)
+	{
+		return -1;
+	}
+
+	ProcessState state = process_get_state(process);
+
+	if (
+		state == PROCESS_TERMINATED ||
+		state == PROCESS_STOPPED)
+	{
+		return -1;
+	}
+
+	return executor_signal(
+		embla->executor,
+		process,
+		SIGSTOP);
+}
+
+int embla_continue_process(
+	Embla *embla,
+	Process *process)
+{
+	if (embla == NULL || process == NULL)
+	{
+		return -1;
+	}
+
+	if (
+		process_get_state(process) !=
+		PROCESS_STOPPED)
+	{
+		return -1;
+	}
+
+	return executor_signal(
+		embla->executor,
+		process,
+		SIGCONT);
 }

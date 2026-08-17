@@ -257,25 +257,25 @@ int executor_poll_any(
 	}
 
 	int wait_status = 0;
+	pid_t result;
 
-	pid_t result = waitpid(
-		-1,
-		&wait_status,
-		WNOHANG);
+	do
+	{
+		result = waitpid(
+			-1,
+			&wait_status,
+			WNOHANG | WUNTRACED | WCONTINUED);
+	} while (result == -1 && errno == EINTR);
 
-	if (result < 0)
+	if (result == -1)
 	{
 		if (errno == ECHILD)
 		{
 			return 0;
 		}
 
-		if (errno == EINTR)
-		{
-			return 0;
-		}
-
 		embla_log_error("waitpid failed");
+
 		return -1;
 	}
 
@@ -288,4 +288,32 @@ int executor_poll_any(
 	*status = wait_status;
 
 	return 1;
+}
+
+int executor_signal(
+	Executor *executor,
+	Process *process,
+	int signal)
+{
+	if (
+		executor == NULL ||
+		process == NULL)
+	{
+		return -1;
+	}
+
+	HostProcessId host_id = process_get_host_id(process);
+
+	if (host_id == EMBLA_INVALID_HOST_PID)
+	{
+		return -1;
+	}
+
+	if (kill(host_id, signal) != 0)
+	{
+		embla_log_error("failed to send signal");
+		return -1;
+	}
+
+	return 0;
 }

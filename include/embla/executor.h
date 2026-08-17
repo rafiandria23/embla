@@ -15,8 +15,19 @@ int executor_spawn(
 	char *const argv[]);
 
 int executor_terminate(Executor *executor, Process *process);
-int executor_wait(Executor *executor, Process *process, int *status);
+int executor_wait(
+	Executor *executor,
+	Process *process,
+	int *status);
 int executor_poll(Executor *executor, Process *process);
-int executor_poll_any(Executor *executor, HostProcessId *host_id, int *status);
+int executor_poll_any(
+	Executor *executor,
+	HostProcessId *host_id,
+	int *status);
+
+int executor_signal(
+	Executor *executor,
+	Process *process,
+	int signal);
 
 #endif

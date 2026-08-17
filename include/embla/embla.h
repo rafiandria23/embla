@@ -40,4 +40,16 @@ Process *embla_spawn_child(
 	const char *path,
 	char *const argv[]);
 
+int embla_terminate(
+	Embla *embla,
+	Process *process);
+
+int embla_stop_process(
+	Embla *embla,
+	Process *process);
+
+int embla_continue_process(
+	Embla *embla,
+	Process *process);
+
 #endif

@@ -135,7 +135,12 @@ static int process_can_transition(
 
 	case PROCESS_RUNNING:
 		return next == PROCESS_READY ||
+			   next == PROCESS_STOPPED ||
 			   next == PROCESS_BLOCKED ||
+			   next == PROCESS_TERMINATED;
+
+	case PROCESS_STOPPED:
+		return next == PROCESS_RUNNING ||
 			   next == PROCESS_TERMINATED;
 
 	case PROCESS_BLOCKED:
@@ -178,6 +183,9 @@ const char *process_state_name(ProcessState state)
 
 	case PROCESS_RUNNING:
 		return "RUNNING";
+
+	case PROCESS_STOPPED:
+		return "STOPPED";
 
 	case PROCESS_BLOCKED:
 		return "BLOCKED";
