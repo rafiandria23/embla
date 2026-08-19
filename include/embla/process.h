@@ -5,11 +5,15 @@
 #include <sys/types.h>
 
 #define EMBLA_ROOT_PID 0
-#define EMBLA_INVALID_PID UINT32_MAX
 #define EMBLA_INVALID_HOST_PID 0
 
-typedef uint32_t ProcessId;
+#define EMBLA_INVALID_PID UINT32_MAX
+#define EMBLA_INVALID_PGID UINT32_MAX
+
 typedef pid_t HostProcessId;
+
+typedef uint32_t ProcessId;
+typedef uint32_t ProcessGroupId;
 
 typedef enum
 {
@@ -32,6 +36,9 @@ void process_destroy(Process *process);
 
 ProcessId process_get_id(const Process *process);
 ProcessId process_get_parent_id(const Process *process);
+
+ProcessGroupId process_get_group_id(const Process *process);
+int process_set_group_id(Process *process, ProcessGroupId group_id);
 
 HostProcessId process_get_host_id(const Process *process);
 int process_set_host_id(Process *process, HostProcessId host_id);

@@ -10,6 +10,9 @@ struct Process
 {
 	ProcessId id;
 	ProcessId parent_id;
+
+	ProcessGroupId group_id;
+
 	HostProcessId host_id;
 
 	ProcessState state;
