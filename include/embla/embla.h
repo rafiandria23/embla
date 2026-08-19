@@ -52,4 +52,8 @@ int embla_continue_process(
 	Embla *embla,
 	Process *process);
 
+int embla_kill(
+	Embla *embla,
+	Process *process);
+
 #endif

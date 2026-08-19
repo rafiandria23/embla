@@ -536,3 +536,23 @@ int embla_continue_process(
 		process,
 		SIGCONT);
 }
+
+int embla_kill(
+	Embla *embla,
+	Process *process)
+{
+	if (embla == NULL || process == NULL)
+	{
+		return -1;
+	}
+
+	if (process_get_state(process) == PROCESS_TERMINATED)
+	{
+		return -1;
+	}
+
+	return executor_signal(
+		embla->executor,
+		process,
+		SIGKILL);
+}
