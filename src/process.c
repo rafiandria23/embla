@@ -26,6 +26,7 @@ struct Process
 Process *process_create(
 	ProcessId id,
 	ProcessId parent_id,
+	ProcessGroupId group_id,
 	const char *name)
 {
 	if (id == EMBLA_INVALID_PID || name == NULL)
@@ -43,6 +44,7 @@ Process *process_create(
 
 	process->id = id;
 	process->parent_id = parent_id;
+	process->group_id = group_id;
 	process->state = PROCESS_CREATED;
 
 	process->name = embla_strdup(name);

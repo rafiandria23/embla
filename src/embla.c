@@ -5,12 +5,14 @@
 #include "embla/embla.h"
 #include "embla/log.h"
 #include "embla/process_manager.h"
+#include "embla/process_group_manager.h"
 #include "embla/scheduler.h"
 #include "embla/executor.h"
 
 struct Embla
 {
 	ProcessManager *process_manager;
+	ProcessGroupManager *process_group_manager;
 	Scheduler *scheduler;
 	Executor *executor;
 
@@ -358,6 +360,7 @@ const char *embla_state_name(EmblaState state)
 static Process *embla_spawn_internal(
 	Embla *embla,
 	ProcessId parent_id,
+	ProcessGroupId group_id,
 	const char *name,
 	const char *path,
 	char *const argv[])
@@ -374,6 +377,7 @@ static Process *embla_spawn_internal(
 	Process *process = process_manager_create_process(
 		embla->process_manager,
 		parent_id,
+		group_id,
 		name);
 
 	if (process == NULL)
@@ -439,12 +443,47 @@ Process *embla_spawn(
 	const char *path,
 	char *const argv[])
 {
-	return embla_spawn_internal(
+	if (
+		embla == NULL ||
+		name == NULL ||
+		path == NULL ||
+		argv == NULL)
+	{
+		return NULL;
+	}
+
+	ProcessGroup *group = process_group_manager_create_group(
+		embla->process_group_manager);
+
+	if (group == NULL)
+	{
+		embla_log_error("failed to create process group");
+		return NULL;
+	}
+
+	ProcessGroupId group_id = process_group_get_id(group);
+
+	Process *process = embla_spawn_internal(
 		embla,
 		EMBLA_ROOT_PID,
+		group_id,
 		name,
 		path,
 		argv);
+
+	if (process == NULL)
+	{
+		if (process_group_manager_destroy_group(
+				embla->process_group_manager,
+				group_id) != 0)
+		{
+			embla_log_error("failed to clean up process group");
+		}
+
+		return NULL;
+	}
+
+	return process;
 }
 
 Process *embla_spawn_child(
@@ -454,14 +493,28 @@ Process *embla_spawn_child(
 	const char *path,
 	char *const argv[])
 {
-	if (parent == NULL)
+	if (
+		embla == NULL ||
+		parent == NULL ||
+		name == NULL ||
+		path == NULL ||
+		argv == NULL)
 	{
+		return NULL;
+	}
+
+	ProcessGroupId group_id = process_get_group_id(parent);
+
+	if (group_id == EMBLA_INVALID_PGID)
+	{
+		embla_log_error("parent has invalid process group");
 		return NULL;
 	}
 
 	return embla_spawn_internal(
 		embla,
 		process_get_id(parent),
+		group_id,
 		name,
 		path,
 		argv);

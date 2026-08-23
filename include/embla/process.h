@@ -30,6 +30,7 @@ typedef struct Process Process;
 Process *process_create(
 	ProcessId id,
 	ProcessId parent_id,
+	ProcessGroupId group_id,
 	const char *name);
 
 void process_destroy(Process *process);

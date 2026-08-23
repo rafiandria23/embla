@@ -76,6 +76,7 @@ static ProcessId process_manager_allocate_pid(ProcessManager *manager)
 Process *process_manager_create_process(
 	ProcessManager *manager,
 	ProcessId parent_id,
+	ProcessGroupId group_id,
 	const char *name)
 {
 	if (manager == NULL || name == NULL)
@@ -97,7 +98,11 @@ Process *process_manager_create_process(
 		return NULL;
 	}
 
-	Process *process = process_create(id, parent_id, name);
+	Process *process = process_create(
+		id,
+		parent_id,
+		group_id,
+		name);
 
 	if (process == NULL)
 	{

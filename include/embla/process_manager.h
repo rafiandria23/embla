@@ -13,6 +13,7 @@ void process_manager_destroy(ProcessManager *manager);
 Process *process_manager_create_process(
 	ProcessManager *manager,
 	ProcessId parent_id,
+	ProcessGroupId group_id,
 	const char *name);
 
 /*
