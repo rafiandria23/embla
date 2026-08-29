@@ -374,6 +374,16 @@ static Process *embla_spawn_internal(
 		return NULL;
 	}
 
+	ProcessGroup *group = process_group_manager_get(
+		embla->process_group_manager,
+		group_id);
+
+	if (group == NULL)
+	{
+		embla_log_error("failed to find process group");
+		return NULL;
+	}
+
 	Process *process = process_manager_create_process(
 		embla->process_manager,
 		parent_id,
@@ -388,6 +398,19 @@ static Process *embla_spawn_internal(
 
 	ProcessId process_id = process_get_id(process);
 
+	if (process_group_add(
+			group,
+			process) != 0)
+	{
+		embla_log_error("failed to add process to process group");
+
+		process_manager_destroy_process(
+			embla->process_manager,
+			process_id);
+
+		return NULL;
+	}
+
 	if (executor_spawn(
 			embla->executor,
 			process,
@@ -395,9 +418,15 @@ static Process *embla_spawn_internal(
 			argv) != 0)
 	{
 		embla_log_error("failed to spawn host process");
+
+		process_group_remove(
+			group,
+			process);
+
 		process_manager_destroy_process(
 			embla->process_manager,
 			process_id);
+
 		return NULL;
 	}
 
@@ -410,6 +439,11 @@ static Process *embla_spawn_internal(
 		executor_terminate(
 			embla->executor,
 			process);
+
+		process_group_remove(
+			group,
+			process);
+
 		process_manager_destroy_process(
 			embla->process_manager,
 			process_id);
@@ -425,6 +459,10 @@ static Process *embla_spawn_internal(
 
 		executor_terminate(
 			embla->executor,
+			process);
+
+		process_group_remove(
+			group,
 			process);
 
 		process_manager_destroy_process(
