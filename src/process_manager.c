@@ -366,11 +366,6 @@ int process_manager_reparent_children(
 	while (
 		(child = process_manager_child_iterator_next(iterator)) != NULL)
 	{
-		if (process_get_state(child) == PROCESS_TERMINATED)
-		{
-			continue;
-		}
-
 		if (process_set_parent_id(
 				child,
 				new_parent_id) != 0)

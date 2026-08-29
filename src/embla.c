@@ -81,6 +81,12 @@ static int embla_shutdown(Embla *embla)
 		return -1;
 	}
 
+	if (embla_reap_root_children(embla) != 0)
+	{
+		embla_log_error("failed to reap root children");
+		return -1;
+	}
+
 	embla->state = EMBLA_STOPPED;
 
 	return 0;
@@ -721,4 +727,35 @@ int embla_reap_child(
 	}
 
 	return 0;
+}
+
+static int embla_reap_root_children(Embla *embla)
+{
+	if (embla == NULL)
+	{
+		return -1;
+	}
+
+	for (;;)
+	{
+		Process *child = process_manager_wait_child(
+			embla->process_manager,
+			EMBLA_ROOT_PID);
+
+		if (child == NULL)
+		{
+			return 0;
+		}
+
+		ProcessId child_id;
+
+		if (embla_reap_child(
+				embla,
+				EMBLA_ROOT_PID,
+				&child_id) != 0)
+		{
+			embla_log_error("failed to reap root child");
+			return -1;
+		}
+	}
 }
