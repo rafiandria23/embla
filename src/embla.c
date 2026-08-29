@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -646,4 +647,78 @@ int embla_kill(
 		embla->executor,
 		process,
 		SIGKILL);
+}
+
+int embla_reap_child(
+	Embla *embla,
+	ProcessId parent_id,
+	ProcessId *child_id)
+{
+	if (embla == NULL)
+	{
+		return -1;
+	}
+
+	Process *process = process_manager_wait_child(
+		embla->process_manager,
+		parent_id);
+
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	ProcessId process_id = process_get_id(process);
+
+	ProcessGroupId group_id = process_get_group_id(process);
+
+	ProcessGroup *group = process_group_manager_get(
+		embla->process_group_manager,
+		group_id);
+
+	if (group == NULL)
+	{
+		embla_log_error("failed to find process group while reaping child");
+		return -1;
+	}
+
+	if (process_group_remove(
+			group,
+			process) != 0)
+	{
+		embla_log_error("failed to remove process from process group");
+		return -1;
+	}
+
+	bool group_empty = process_group_count(group) == 0;
+
+	if (process_manager_destroy_process(
+			embla->process_manager,
+			process_id) != 0)
+	{
+		embla_log_error(
+			"failed to destroy reaped process");
+
+		return -1;
+	}
+
+	if (group_empty)
+	{
+		if (process_group_manager_destroy_group(
+				embla->process_group_manager,
+				group_id) != 0)
+		{
+			embla_log_error(
+				"failed to destroy empty process group");
+
+			return -1;
+		}
+	}
+
+	if (child_id != NULL)
+	{
+		*child_id = process_id;
+	}
+
+	return 0;
 }

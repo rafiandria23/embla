@@ -56,4 +56,9 @@ int embla_kill(
 	Embla *embla,
 	Process *process);
 
+int embla_reap_child(
+	Embla *embla,
+	ProcessId parent_id,
+	ProcessId *child_id);
+
 #endif
