@@ -5,10 +5,8 @@
 #include <sys/types.h>
 
 #define EMBLA_ROOT_PID 0
-#define EMBLA_INVALID_HOST_PID 0
-
 #define EMBLA_INVALID_PID UINT32_MAX
-#define EMBLA_INVALID_PGID UINT32_MAX
+#define EMBLA_INVALID_HOST_PID 0
 
 typedef pid_t HostProcessId;
 
