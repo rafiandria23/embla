@@ -61,4 +61,9 @@ int embla_reap_child(
 	ProcessId parent_id,
 	ProcessId *child_id);
 
+int embla_signal_group(
+	Embla *embla,
+	ProcessGroup *group,
+	int signal);
+
 #endif

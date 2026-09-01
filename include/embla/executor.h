@@ -2,6 +2,7 @@
 #define EMBLA_EXECUTOR_H
 
 #include "embla/process.h"
+#include "embla/process_group.h"
 
 typedef struct Executor Executor;
 
@@ -28,6 +29,11 @@ int executor_poll_any(
 int executor_signal(
 	Executor *executor,
 	Process *process,
+	int signal);
+
+int executor_signal_group(
+	Executor *executor,
+	HostProcessGroupId host_group_id,
 	int signal);
 
 #endif

@@ -317,3 +317,27 @@ int executor_signal(
 
 	return 0;
 }
+
+int executor_signal_group(
+	Executor *executor,
+	HostProcessGroupId host_group_id,
+	int signal)
+{
+	if (executor == NULL)
+	{
+		return -1;
+	}
+
+	if (host_group_id == EMBLA_INVALID_HOST_PGID)
+	{
+		return -1;
+	}
+
+	if (kill(-host_group_id, signal) != 0)
+	{
+		embla_log_error("failed to send signal to process group");
+		return -1;
+	}
+
+	return 0;
+}

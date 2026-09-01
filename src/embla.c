@@ -759,3 +759,26 @@ static int embla_reap_root_children(Embla *embla)
 		}
 	}
 }
+
+int embla_signal_group(
+	Embla *embla,
+	ProcessGroup *group,
+	int signal)
+{
+	if (embla == NULL || group == NULL)
+	{
+		return -1;
+	}
+
+	HostProcessGroupId host_group_id = process_group_get_host_id(group);
+
+	if (host_group_id == EMBLA_INVALID_HOST_PGID)
+	{
+		return -1;
+	}
+
+	return executor_signal_group(
+		embla->executor,
+		host_group_id,
+		signal);
+}
