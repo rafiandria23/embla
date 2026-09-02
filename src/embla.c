@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -20,6 +22,8 @@ struct Embla
 	EmblaState state;
 };
 
+static int embla_reap_root_children(Embla *embla);
+
 Embla *embla_create(void)
 {
 	Embla *embla = malloc(sizeof(*embla));
@@ -36,7 +40,21 @@ Embla *embla_create(void)
 	if (embla->process_manager == NULL)
 	{
 		embla_log_error("failed to create process manager");
+
 		free(embla);
+
+		return NULL;
+	}
+
+	embla->process_group_manager = process_group_manager_create();
+
+	if (embla->process_group_manager == NULL)
+	{
+		embla_log_error("failed to create process group manager");
+
+		process_manager_destroy(embla->process_manager);
+		free(embla);
+
 		return NULL;
 	}
 
@@ -46,7 +64,9 @@ Embla *embla_create(void)
 	{
 		embla_log_error("failed to create scheduler");
 
+		process_group_manager_destroy(embla->process_group_manager);
 		process_manager_destroy(embla->process_manager);
+
 		free(embla);
 
 		return NULL;
@@ -56,7 +76,10 @@ Embla *embla_create(void)
 
 	if (embla->executor == NULL)
 	{
+		embla_log_error("failed to create executor");
+
 		scheduler_destroy(embla->scheduler);
+		process_group_manager_destroy(embla->process_group_manager);
 		process_manager_destroy(embla->process_manager);
 
 		free(embla);
@@ -301,6 +324,7 @@ void embla_destroy(Embla *embla)
 
 	executor_destroy(embla->executor);
 	scheduler_destroy(embla->scheduler);
+	process_group_manager_destroy(embla->process_group_manager);
 	process_manager_destroy(embla->process_manager);
 
 	free(embla);
@@ -314,6 +338,16 @@ ProcessManager *embla_process_manager(Embla *embla)
 	}
 
 	return embla->process_manager;
+}
+
+ProcessGroupManager *embla_process_group_manager(Embla *embla)
+{
+	if (embla == NULL)
+	{
+		return NULL;
+	}
+
+	return embla->process_group_manager;
 }
 
 Scheduler *embla_scheduler(Embla *embla)
@@ -418,9 +452,12 @@ static Process *embla_spawn_internal(
 		return NULL;
 	}
 
+	HostProcessGroupId target_host_group_id = process_group_get_host_id(group);
+
 	if (executor_spawn(
 			embla->executor,
 			process,
+			target_host_group_id,
 			path,
 			argv) != 0)
 	{
@@ -435,6 +472,30 @@ static Process *embla_spawn_internal(
 			process_id);
 
 		return NULL;
+	}
+
+	if (target_host_group_id == EMBLA_INVALID_HOST_PGID)
+	{
+		HostProcessGroupId leader_host_group_id = (HostProcessGroupId)process_get_host_id(process);
+
+		if (process_group_set_host_id(group, leader_host_group_id) != 0)
+		{
+			embla_log_error("failed to record host PGID for process group");
+
+			executor_terminate(
+				embla->executor,
+				process);
+
+			process_group_remove(
+				group,
+				process);
+
+			process_manager_destroy_process(
+				embla->process_manager,
+				process_id);
+
+			return NULL;
+		}
 	}
 
 	if (process_transition(
@@ -781,4 +842,64 @@ int embla_signal_group(
 		embla->executor,
 		host_group_id,
 		signal);
+}
+
+int embla_stop_group(
+	Embla *embla,
+	ProcessGroup *group)
+{
+	if (embla == NULL || group == NULL)
+	{
+		return -1;
+	}
+
+	return embla_signal_group(
+		embla,
+		group,
+		SIGSTOP);
+}
+
+int embla_continue_group(
+	Embla *embla,
+	ProcessGroup *group)
+{
+	if (embla == NULL || group == NULL)
+	{
+		return -1;
+	}
+
+	return embla_signal_group(
+		embla,
+		group,
+		SIGCONT);
+}
+
+int embla_terminate_group(
+	Embla *embla,
+	ProcessGroup *group)
+{
+	if (embla == NULL || group == NULL)
+	{
+		return -1;
+	}
+
+	return embla_signal_group(
+		embla,
+		group,
+		SIGTERM);
+}
+
+int embla_kill_group(
+	Embla *embla,
+	ProcessGroup *group)
+{
+	if (embla == NULL || group == NULL)
+	{
+		return -1;
+	}
+
+	return embla_signal_group(
+		embla,
+		group,
+		SIGKILL);
 }

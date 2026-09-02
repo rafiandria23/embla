@@ -2,8 +2,9 @@
 #define EMBLA_EMBLA_H
 
 #include "embla/executor.h"
-#include "embla/process_manager.h"
 #include "embla/process.h"
+#include "embla/process_manager.h"
+#include "embla/process_group_manager.h"
 #include "embla/scheduler.h"
 
 typedef struct Embla Embla;
@@ -21,6 +22,7 @@ int embla_stop(Embla *embla);
 void embla_destroy(Embla *embla);
 
 ProcessManager *embla_process_manager(Embla *embla);
+ProcessGroupManager *embla_process_group_manager(Embla *embla);
 Scheduler *embla_scheduler(Embla *embla);
 Executor *embla_executor(Embla *embla);
 
@@ -65,5 +67,17 @@ int embla_signal_group(
 	Embla *embla,
 	ProcessGroup *group,
 	int signal);
+int embla_stop_group(
+	Embla *embla,
+	ProcessGroup *group);
+int embla_continue_group(
+	Embla *embla,
+	ProcessGroup *group);
+int embla_terminate_group(
+	Embla *embla,
+	ProcessGroup *group);
+int embla_kill_group(
+	Embla *embla,
+	ProcessGroup *group);
 
 #endif

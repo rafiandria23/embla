@@ -45,6 +45,7 @@ ProcessGroup *process_group_create(ProcessGroupId id)
 	}
 
 	group->id = id;
+	group->host_id = EMBLA_INVALID_HOST_PGID;
 	group->count = 0;
 	group->capacity = PROCESS_GROUP_INITIAL_CAPACITY;
 

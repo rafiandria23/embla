@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include "embla/embla.h"
 
 int main(void)

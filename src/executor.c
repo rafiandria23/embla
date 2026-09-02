@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -40,6 +42,7 @@ void executor_destroy(Executor *executor)
 int executor_spawn(
 	Executor *executor,
 	Process *process,
+	HostProcessGroupId target_host_group_id,
 	const char *path,
 	char *const argv[])
 {
@@ -62,13 +65,23 @@ int executor_spawn(
 
 	if (pid == 0)
 	{
-		execv(path, argv);
+		if (setpgid(0, target_host_group_id) != 0)
+		{
+			_exit(126);
+		}
 
-		// If execv() returns, it failed
+		execv(path, argv);
 		_exit(127);
 	}
 
-	// Parent process
+	if (setpgid(pid, target_host_group_id) != 0 && errno != EACCES)
+	{
+		embla_log_error("failed to set host process group");
+		kill(pid, SIGKILL);
+
+		return -1;
+	}
+
 	if (process_set_host_id(process, pid) != 0)
 	{
 		embla_log_error("failed to assign host pid");

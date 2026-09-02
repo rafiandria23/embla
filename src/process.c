@@ -4,6 +4,7 @@
 
 #include "embla/log.h"
 #include "embla/process.h"
+#include "embla/process_group.h"
 #include "embla/string.h"
 
 struct Process
@@ -45,6 +46,7 @@ Process *process_create(
 	process->id = id;
 	process->parent_id = parent_id;
 	process->group_id = group_id;
+	process->host_id = EMBLA_INVALID_HOST_PID;
 	process->state = PROCESS_CREATED;
 
 	process->name = embla_strdup(name);
@@ -93,6 +95,28 @@ ProcessId process_get_parent_id(const Process *process)
 	return process->parent_id;
 }
 
+ProcessGroupId process_get_group_id(const Process *process)
+{
+	if (process == NULL)
+	{
+		return EMBLA_INVALID_PGID;
+	}
+
+	return process->group_id;
+}
+
+int process_set_group_id(Process *process, ProcessGroupId group_id)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->group_id = group_id;
+
+	return 0;
+}
+
 HostProcessId process_get_host_id(const Process *process)
 {
 	if (process == NULL)
@@ -136,6 +160,7 @@ static int process_can_transition(
 
 	case PROCESS_READY:
 		return next == PROCESS_RUNNING ||
+			   next == PROCESS_STOPPED ||
 			   next == PROCESS_TERMINATED;
 
 	case PROCESS_RUNNING:

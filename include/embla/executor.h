@@ -12,6 +12,7 @@ void executor_destroy(Executor *executor);
 int executor_spawn(
 	Executor *executor,
 	Process *process,
+	HostProcessGroupId target_host_group_id,
 	const char *path,
 	char *const argv[]);
 

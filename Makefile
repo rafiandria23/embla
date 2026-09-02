@@ -15,7 +15,12 @@ SRC := $(wildcard src/*.c)
 OBJ := $(SRC:src/%.c=build/%.o)
 DEP := $(OBJ:.o=.d)
 
-.PHONY: all clean
+LIB_OBJ := $(filter-out build/main.o,$(OBJ))
+
+TEST_SRC := $(wildcard tests/*.c)
+TEST_BIN := $(TEST_SRC:tests/%.c=build/tests/%)
+
+.PHONY: all clean test
 
 all: $(TARGET)
 
@@ -25,6 +30,14 @@ $(TARGET): $(OBJ)
 build/%.o: src/%.c
 	mkdir -p build
 	$(CC) $(CFLAGS) -Iinclude -c $< -o $@
+
+build/tests/%: tests/%.c $(LIB_OBJ)
+	mkdir -p build/tests
+	$(CC) $(CFLAGS) -Iinclude $< $(LIB_OBJ) -o $@
+
+test: $(TEST_BIN)
+	@for t in $(TEST_BIN); do echo "=== running $$t ==="; $$t || exit 1; done
+	@echo "all tests passed"
 
 -include $(DEP)
 
