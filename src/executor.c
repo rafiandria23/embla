@@ -3,11 +3,14 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include "embla/executor.h"
 #include "embla/log.h"
+
+extern char **environ;
 
 struct Executor
 {
@@ -105,18 +108,80 @@ static int executor_apply_termination(
 	return 0;
 }
 
+static void executor_child_exec(
+	HostProcessGroupId target_host_group_id,
+	const ProcessConfig *config)
+{
+	if (setpgid(0, target_host_group_id) != 0)
+	{
+		_exit(126);
+	}
+
+	const char *working_directory = process_config_get_working_directory(config);
+
+	if (working_directory != NULL && chdir(working_directory) != 0)
+	{
+		_exit(120);
+	}
+
+	if (process_config_has_umask(config))
+	{
+		umask(process_config_get_umask(config));
+	}
+
+	int stdin_fd = process_config_get_stdin_fd(config);
+	int stdout_fd = process_config_get_stdout_fd(config);
+	int stderr_fd = process_config_get_stderr_fd(config);
+
+	if (stdin_fd != -1 && dup2(stdin_fd, STDIN_FILENO) == -1)
+	{
+		_exit(121);
+	}
+
+	if (stdout_fd != -1 && dup2(stdout_fd, STDOUT_FILENO) == -1)
+	{
+		_exit(122);
+	}
+
+	if (stderr_fd != -1 && dup2(stderr_fd, STDERR_FILENO) == -1)
+	{
+		_exit(123);
+	}
+
+	if (process_config_has_credentials(config))
+	{
+		if (setgid(process_config_get_gid(config)) != 0)
+		{
+			_exit(124);
+		}
+
+		if (setuid(process_config_get_uid(config)) != 0)
+		{
+			_exit(125);
+		}
+	}
+
+	char *const *envp = process_config_get_env(config);
+
+	execve(
+		process_config_get_path(config),
+		process_config_get_argv(config),
+		envp != NULL ? envp : environ);
+
+	// If execve() returns, it failed
+	_exit(127);
+}
+
 int executor_spawn(
 	Executor *executor,
 	Process *process,
 	HostProcessGroupId target_host_group_id,
-	const char *path,
-	char *const argv[])
+	const ProcessConfig *config)
 {
 	if (
 		executor == NULL ||
 		process == NULL ||
-		path == NULL ||
-		argv == NULL)
+		config == NULL)
 	{
 		return -1;
 	}
@@ -131,15 +196,8 @@ int executor_spawn(
 
 	if (pid == 0)
 	{
-		if (setpgid(0, target_host_group_id) != 0)
-		{
-			_exit(126);
-		}
-
-		execv(path, argv);
-
-		// If execv() returns, it failed
-		_exit(127);
+		executor_child_exec(target_host_group_id, config);
+		// executor_child_exec() never returns
 	}
 
 	if (
@@ -148,6 +206,7 @@ int executor_spawn(
 	{
 		embla_log_error("failed to set host process group");
 		executor_kill_and_reap(pid);
+
 		return -1;
 	}
 
@@ -155,6 +214,7 @@ int executor_spawn(
 	{
 		embla_log_error("failed to assign host pid");
 		executor_kill_and_reap(pid);
+
 		return -1;
 	}
 

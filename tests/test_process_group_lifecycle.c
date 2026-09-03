@@ -1,7 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <signal.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -11,6 +10,7 @@
 #include "embla/embla.h"
 #include "embla/log.h"
 #include "embla/process.h"
+#include "embla/process_config.h"
 #include "embla/process_group.h"
 #include "embla/process_group_manager.h"
 #include "embla/process_manager.h"
@@ -85,13 +85,13 @@ static int wait_for_group_state(
 			return -1;
 		}
 
-		bool all_matched = true;
+		int all_matched = 1;
 
 		for (size_t i = 0; i < member_count; i++)
 		{
 			if (process_get_state(members[i]) != expected_state)
 			{
-				all_matched = false;
+				all_matched = 0;
 				break;
 			}
 		}
@@ -102,6 +102,7 @@ static int wait_for_group_state(
 		}
 	}
 }
+
 static int drain_terminations(
 	Embla *embla,
 	size_t expected_count)
@@ -190,16 +191,18 @@ static int run_lifecycle_test(void)
 
 	CHECK(embla != NULL, "embla_create should succeed");
 
-	char *parent_argv[] = {"sleep", "30", NULL};
-	char *first_child_argv[] = {"sleep", "30", NULL};
-	char *second_child_argv[] = {"sleep", "30", NULL};
+	char *sleep_argv[] = {"sleep", "30", NULL};
 
-	Process *parent = embla_spawn(embla, "parent", "/bin/sleep", parent_argv);
+	ProcessConfig *config = process_config_create("/bin/sleep", sleep_argv);
+
+	CHECK(config != NULL, "creating the shared process config should succeed");
+
+	Process *parent = embla_spawn(embla, "parent", config);
 
 	CHECK(parent != NULL, "spawning the root-owned parent should succeed");
 
-	Process *first_child = embla_spawn_child(embla, parent, "first-child", "/bin/sleep", first_child_argv);
-	Process *second_child = embla_spawn_child(embla, parent, "second-child", "/bin/sleep", second_child_argv);
+	Process *first_child = embla_spawn_child(embla, parent, "first-child", config);
+	Process *second_child = embla_spawn_child(embla, parent, "second-child", config);
 
 	CHECK(first_child != NULL, "spawning first_child should succeed");
 	CHECK(second_child != NULL, "spawning second_child should succeed");
@@ -311,6 +314,7 @@ static int run_lifecycle_test(void)
 		process_group_manager_count(group_manager) == 0,
 		"the now-empty group must have been cleaned up automatically");
 
+	process_config_destroy(config);
 	embla_destroy(embla);
 
 	return 0;

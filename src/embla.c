@@ -426,14 +426,12 @@ static Process *embla_spawn_internal(
 	ProcessId parent_id,
 	ProcessGroupId group_id,
 	const char *name,
-	const char *path,
-	char *const argv[])
+	const ProcessConfig *config)
 {
 	if (
 		embla == NULL ||
 		name == NULL ||
-		path == NULL ||
-		argv == NULL)
+		config == NULL)
 	{
 		return NULL;
 	}
@@ -468,6 +466,7 @@ static Process *embla_spawn_internal(
 	{
 		embla_log_error("failed to add process to process group");
 		embla_spawn_rollback(embla, group, process, process_id, false);
+
 		return NULL;
 	}
 
@@ -478,18 +477,17 @@ static Process *embla_spawn_internal(
 			embla->executor,
 			process,
 			target_host_group_id,
-			path,
-			argv) != 0)
+			config) != 0)
 	{
 		embla_log_error("failed to spawn host process");
 		embla_spawn_rollback(embla, group, process, process_id, false);
+
 		return NULL;
 	}
 
 	if (target_host_group_id == EMBLA_INVALID_HOST_PGID)
 	{
-		HostProcessGroupId leader_host_group_id =
-			(HostProcessGroupId)process_get_host_id(process);
+		HostProcessGroupId leader_host_group_id = (HostProcessGroupId)process_get_host_id(process);
 
 		if (process_group_set_host_id(
 				group,
@@ -497,6 +495,7 @@ static Process *embla_spawn_internal(
 		{
 			embla_log_error("failed to record host PGID for process group");
 			embla_spawn_rollback(embla, group, process, process_id, true);
+
 			return NULL;
 		}
 	}
@@ -507,6 +506,7 @@ static Process *embla_spawn_internal(
 	{
 		embla_log_error("failed to transition process to READY");
 		embla_spawn_rollback(embla, group, process, process_id, true);
+
 		return NULL;
 	}
 
@@ -525,14 +525,12 @@ static Process *embla_spawn_internal(
 Process *embla_spawn(
 	Embla *embla,
 	const char *name,
-	const char *path,
-	char *const argv[])
+	const ProcessConfig *config)
 {
 	if (
 		embla == NULL ||
 		name == NULL ||
-		path == NULL ||
-		argv == NULL)
+		config == NULL)
 	{
 		return NULL;
 	}
@@ -553,8 +551,7 @@ Process *embla_spawn(
 		EMBLA_ROOT_PID,
 		group_id,
 		name,
-		path,
-		argv);
+		config);
 
 	if (process == NULL)
 	{
@@ -575,15 +572,13 @@ Process *embla_spawn_child(
 	Embla *embla,
 	Process *parent,
 	const char *name,
-	const char *path,
-	char *const argv[])
+	const ProcessConfig *config)
 {
 	if (
 		embla == NULL ||
 		parent == NULL ||
 		name == NULL ||
-		path == NULL ||
-		argv == NULL)
+		config == NULL)
 	{
 		return NULL;
 	}
@@ -601,8 +596,7 @@ Process *embla_spawn_child(
 		process_get_id(parent),
 		group_id,
 		name,
-		path,
-		argv);
+		config);
 }
 
 int embla_terminate(

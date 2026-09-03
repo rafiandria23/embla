@@ -3,6 +3,7 @@
 
 #include "embla/executor.h"
 #include "embla/process.h"
+#include "embla/process_config.h"
 #include "embla/process_manager.h"
 #include "embla/process_group_manager.h"
 #include "embla/scheduler.h"
@@ -35,15 +36,13 @@ const char *embla_state_name(EmblaState state);
 Process *embla_spawn(
 	Embla *embla,
 	const char *name,
-	const char *path,
-	char *const argv[]);
+	const ProcessConfig *config);
 
 Process *embla_spawn_child(
 	Embla *embla,
 	Process *parent,
 	const char *name,
-	const char *path,
-	char *const argv[]);
+	const ProcessConfig *config);
 
 int embla_terminate(Embla *embla, Process *process);
 int embla_stop_process(Embla *embla, Process *process);

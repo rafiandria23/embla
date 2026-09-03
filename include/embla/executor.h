@@ -2,20 +2,24 @@
 #define EMBLA_EXECUTOR_H
 
 #include "embla/process.h"
+#include "embla/process_config.h"
 #include "embla/process_group.h"
 
+/*
+ * Owns host-process mechanics: forking, exec'ing, signaling, and
+ * reaping real OS processes on Embla's behalf. Opaque; the
+ * concrete struct is private to src/executor.c.
+ */
 typedef struct Executor Executor;
 
 Executor *executor_create(void);
-
 void executor_destroy(Executor *executor);
 
 int executor_spawn(
 	Executor *executor,
 	Process *process,
 	HostProcessGroupId target_host_group_id,
-	const char *path,
-	char *const argv[]);
+	const ProcessConfig *config);
 
 int executor_terminate(Executor *executor, Process *process);
 
