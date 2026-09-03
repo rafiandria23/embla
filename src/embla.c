@@ -398,6 +398,29 @@ const char *embla_state_name(EmblaState state)
 	}
 }
 
+static void embla_spawn_rollback(
+	Embla *embla,
+	ProcessGroup *group,
+	Process *process,
+	ProcessId process_id,
+	bool host_process_spawned)
+{
+	if (host_process_spawned)
+	{
+		executor_terminate(
+			embla->executor,
+			process);
+	}
+
+	process_group_remove(
+		group,
+		process);
+
+	process_manager_destroy_process(
+		embla->process_manager,
+		process_id);
+}
+
 static Process *embla_spawn_internal(
 	Embla *embla,
 	ProcessId parent_id,
@@ -444,15 +467,12 @@ static Process *embla_spawn_internal(
 			process) != 0)
 	{
 		embla_log_error("failed to add process to process group");
-
-		process_manager_destroy_process(
-			embla->process_manager,
-			process_id);
-
+		embla_spawn_rollback(embla, group, process, process_id, false);
 		return NULL;
 	}
 
-	HostProcessGroupId target_host_group_id = process_group_get_host_id(group);
+	HostProcessGroupId target_host_group_id =
+		process_group_get_host_id(group);
 
 	if (executor_spawn(
 			embla->executor,
@@ -462,38 +482,21 @@ static Process *embla_spawn_internal(
 			argv) != 0)
 	{
 		embla_log_error("failed to spawn host process");
-
-		process_group_remove(
-			group,
-			process);
-
-		process_manager_destroy_process(
-			embla->process_manager,
-			process_id);
-
+		embla_spawn_rollback(embla, group, process, process_id, false);
 		return NULL;
 	}
 
 	if (target_host_group_id == EMBLA_INVALID_HOST_PGID)
 	{
-		HostProcessGroupId leader_host_group_id = (HostProcessGroupId)process_get_host_id(process);
+		HostProcessGroupId leader_host_group_id =
+			(HostProcessGroupId)process_get_host_id(process);
 
-		if (process_group_set_host_id(group, leader_host_group_id) != 0)
+		if (process_group_set_host_id(
+				group,
+				leader_host_group_id) != 0)
 		{
 			embla_log_error("failed to record host PGID for process group");
-
-			executor_terminate(
-				embla->executor,
-				process);
-
-			process_group_remove(
-				group,
-				process);
-
-			process_manager_destroy_process(
-				embla->process_manager,
-				process_id);
-
+			embla_spawn_rollback(embla, group, process, process_id, true);
 			return NULL;
 		}
 	}
@@ -503,19 +506,7 @@ static Process *embla_spawn_internal(
 			PROCESS_READY) != 0)
 	{
 		embla_log_error("failed to transition process to READY");
-
-		executor_terminate(
-			embla->executor,
-			process);
-
-		process_group_remove(
-			group,
-			process);
-
-		process_manager_destroy_process(
-			embla->process_manager,
-			process_id);
-
+		embla_spawn_rollback(embla, group, process, process_id, true);
 		return NULL;
 	}
 
@@ -524,19 +515,7 @@ static Process *embla_spawn_internal(
 			process) != 0)
 	{
 		embla_log_error("failed to add process to scheduler");
-
-		executor_terminate(
-			embla->executor,
-			process);
-
-		process_group_remove(
-			group,
-			process);
-
-		process_manager_destroy_process(
-			embla->process_manager,
-			process_id);
-
+		embla_spawn_rollback(embla, group, process, process_id, true);
 		return NULL;
 	}
 

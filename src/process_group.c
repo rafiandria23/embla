@@ -4,6 +4,7 @@
 #include "embla/process_group.h"
 
 #define PROCESS_GROUP_INITIAL_CAPACITY 16
+#define PROCESS_GROUP_NOT_FOUND ((size_t)-1)
 
 struct ProcessGroup
 {
@@ -83,6 +84,21 @@ size_t process_group_count(const ProcessGroup *group)
 	return group->count;
 }
 
+static size_t process_group_find_index(
+	const ProcessGroup *group,
+	const Process *process)
+{
+	for (size_t i = 0; i < group->count; i++)
+	{
+		if (group->processes[i] == process)
+		{
+			return i;
+		}
+	}
+
+	return PROCESS_GROUP_NOT_FOUND;
+}
+
 int process_group_add(
 	ProcessGroup *group,
 	Process *process)
@@ -106,12 +122,9 @@ int process_group_add(
 		return -1;
 	}
 
-	for (size_t i = 0; i < group->count; i++)
+	if (process_group_find_index(group, process) != PROCESS_GROUP_NOT_FOUND)
 	{
-		if (group->processes[i] == process)
-		{
-			return -1;
-		}
+		return -1;
 	}
 
 	group->processes[group->count] = process;
@@ -129,23 +142,20 @@ int process_group_remove(
 		return -1;
 	}
 
-	for (size_t i = 0; i < group->count; i++)
+	size_t index = process_group_find_index(group, process);
+
+	if (index == PROCESS_GROUP_NOT_FOUND)
 	{
-		if (group->processes[i] != process)
-		{
-			continue;
-		}
-
-		size_t last = group->count - 1;
-
-		group->processes[i] = group->processes[last];
-		group->processes[last] = NULL;
-		group->count--;
-
-		return 0;
+		return -1;
 	}
 
-	return -1;
+	size_t last = group->count - 1;
+
+	group->processes[index] = group->processes[last];
+	group->processes[last] = NULL;
+	group->count--;
+
+	return 0;
 }
 
 HostProcessGroupId process_group_get_host_id(const ProcessGroup *group)

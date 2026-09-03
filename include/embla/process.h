@@ -37,12 +37,14 @@ ProcessId process_get_id(const Process *process);
 ProcessId process_get_parent_id(const Process *process);
 
 ProcessGroupId process_get_group_id(const Process *process);
+
 int process_set_group_id(Process *process, ProcessGroupId group_id);
 
 HostProcessId process_get_host_id(const Process *process);
 int process_set_host_id(Process *process, HostProcessId host_id);
 
 ProcessState process_get_state(const Process *process);
+
 int process_transition(Process *process, ProcessState next_state);
 
 const char *process_state_name(ProcessState state);

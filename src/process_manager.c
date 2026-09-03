@@ -5,6 +5,7 @@
 #include "embla/process_manager.h"
 
 #define PROCESS_MANAGER_INITIAL_CAPACITY 16
+#define PROCESS_MANAGER_NOT_FOUND ((size_t)-1)
 
 struct ProcessManager
 {
@@ -115,6 +116,21 @@ Process *process_manager_create_process(
 	return process;
 }
 
+static size_t process_manager_find_index(
+	const ProcessManager *manager,
+	ProcessId id)
+{
+	for (size_t i = 0; i < manager->count; i++)
+	{
+		if (process_get_id(manager->processes[i]) == id)
+		{
+			return i;
+		}
+	}
+
+	return PROCESS_MANAGER_NOT_FOUND;
+}
+
 Process *process_manager_get(
 	const ProcessManager *manager,
 	ProcessId id)
@@ -124,17 +140,14 @@ Process *process_manager_get(
 		return NULL;
 	}
 
-	for (size_t i = 0; i < manager->count; i++)
-	{
-		Process *process = manager->processes[i];
+	size_t index = process_manager_find_index(manager, id);
 
-		if (process_get_id(process) == id)
-		{
-			return process;
-		}
+	if (index == PROCESS_MANAGER_NOT_FOUND)
+	{
+		return NULL;
 	}
 
-	return NULL;
+	return manager->processes[index];
 }
 
 Process *process_manager_get_by_host_id(
@@ -226,29 +239,25 @@ int process_manager_destroy_process(
 		return -1;
 	}
 
-	for (size_t i = 0; i < manager->count; i++)
+	size_t index = process_manager_find_index(manager, id);
+
+	if (index == PROCESS_MANAGER_NOT_FOUND)
 	{
-		Process *process = manager->processes[i];
-
-		if (process_get_id(process) != id)
-		{
-			continue;
-		}
-
-		process_destroy(process);
-
-		size_t last = manager->count - 1;
-
-		manager->processes[i] = manager->processes[last];
-		manager->processes[last] = NULL;
-
-		manager->count--;
-		manager->iterator_index = 0;
-
-		return 0;
+		return -1;
 	}
 
-	return -1;
+	process_destroy(manager->processes[index]);
+
+	size_t last = manager->count - 1;
+
+	manager->processes[index] = manager->processes[last];
+	manager->processes[last] = NULL;
+
+	manager->count--;
+
+	manager->iterator_index = 0;
+
+	return 0;
 }
 
 Process *process_manager_first(ProcessManager *manager)

@@ -17,8 +17,11 @@ typedef enum
 } EmblaState;
 
 Embla *embla_create(void);
+
 int embla_run(Embla *embla);
+
 int embla_stop(Embla *embla);
+
 void embla_destroy(Embla *embla);
 
 ProcessManager *embla_process_manager(Embla *embla);
@@ -42,42 +45,20 @@ Process *embla_spawn_child(
 	const char *path,
 	char *const argv[]);
 
-int embla_terminate(
-	Embla *embla,
-	Process *process);
-
-int embla_stop_process(
-	Embla *embla,
-	Process *process);
-
-int embla_continue_process(
-	Embla *embla,
-	Process *process);
-
-int embla_kill(
-	Embla *embla,
-	Process *process);
+int embla_terminate(Embla *embla, Process *process);
+int embla_stop_process(Embla *embla, Process *process);
+int embla_continue_process(Embla *embla, Process *process);
+int embla_kill(Embla *embla, Process *process);
 
 int embla_reap_child(
 	Embla *embla,
 	ProcessId parent_id,
 	ProcessId *child_id);
 
-int embla_signal_group(
-	Embla *embla,
-	ProcessGroup *group,
-	int signal);
-int embla_stop_group(
-	Embla *embla,
-	ProcessGroup *group);
-int embla_continue_group(
-	Embla *embla,
-	ProcessGroup *group);
-int embla_terminate_group(
-	Embla *embla,
-	ProcessGroup *group);
-int embla_kill_group(
-	Embla *embla,
-	ProcessGroup *group);
+int embla_signal_group(Embla *embla, ProcessGroup *group, int signal);
+int embla_stop_group(Embla *embla, ProcessGroup *group);
+int embla_continue_group(Embla *embla, ProcessGroup *group);
+int embla_terminate_group(Embla *embla, ProcessGroup *group);
+int embla_kill_group(Embla *embla, ProcessGroup *group);
 
 #endif

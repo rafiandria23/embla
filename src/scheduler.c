@@ -56,6 +56,21 @@ void scheduler_destroy(Scheduler *scheduler)
 	free(scheduler);
 }
 
+static size_t scheduler_advance(const Scheduler *scheduler, size_t index)
+{
+	return (index + 1) % scheduler->capacity;
+}
+
+static size_t scheduler_retreat(const Scheduler *scheduler, size_t index)
+{
+	return (index + scheduler->capacity - 1) % scheduler->capacity;
+}
+
+static size_t scheduler_index_at(const Scheduler *scheduler, size_t offset)
+{
+	return (scheduler->head + offset) % scheduler->capacity;
+}
+
 int scheduler_add(Scheduler *scheduler, Process *process)
 {
 	if (scheduler == NULL || process == NULL)
@@ -71,7 +86,7 @@ int scheduler_add(Scheduler *scheduler, Process *process)
 
 	scheduler->ready_queue[scheduler->tail] = process;
 
-	scheduler->tail = (scheduler->tail + 1) % scheduler->capacity;
+	scheduler->tail = scheduler_advance(scheduler, scheduler->tail);
 
 	scheduler->count++;
 
@@ -93,7 +108,7 @@ int scheduler_remove(Scheduler *scheduler, Process *process)
 
 	for (size_t i = 0; i < scheduler->count; i++)
 	{
-		size_t index = (scheduler->head + i) % scheduler->capacity;
+		size_t index = scheduler_index_at(scheduler, i);
 
 		if (scheduler->ready_queue[index] != process)
 		{
@@ -103,16 +118,16 @@ int scheduler_remove(Scheduler *scheduler, Process *process)
 		// Shift all subsequent elements one position toward the removed element
 		for (size_t j = i; j + 1 < scheduler->count; j++)
 		{
-			size_t current_index = (scheduler->head + j) % scheduler->capacity;
-			size_t next_index = (scheduler->head + j + 1) % scheduler->capacity;
+			size_t current_index = scheduler_index_at(scheduler, j);
+			size_t next_index = scheduler_index_at(scheduler, j + 1);
 
 			scheduler->ready_queue[current_index] = scheduler->ready_queue[next_index];
 		}
 
-		size_t last_index = (scheduler->head + scheduler->count - 1) % scheduler->capacity;
+		size_t last_index = scheduler_index_at(scheduler, scheduler->count - 1);
 
 		scheduler->ready_queue[last_index] = NULL;
-		scheduler->tail = (scheduler->tail + scheduler->capacity - 1) % scheduler->capacity;
+		scheduler->tail = scheduler_retreat(scheduler, scheduler->tail);
 		scheduler->count--;
 
 		return 0;
@@ -137,7 +152,7 @@ Process *scheduler_next(Scheduler *scheduler)
 
 	scheduler->ready_queue[scheduler->head] = NULL;
 
-	scheduler->head = (scheduler->head + 1) % scheduler->capacity;
+	scheduler->head = scheduler_advance(scheduler, scheduler->head);
 
 	scheduler->count--;
 
@@ -175,6 +190,10 @@ int scheduler_dispatch(Scheduler *scheduler)
 
 	if (process_transition(process, PROCESS_RUNNING) != 0)
 	{
+		embla_log_error("dispatched process failed to transition to RUNNING");
+
+		scheduler_add(scheduler, process);
+
 		return -1;
 	}
 

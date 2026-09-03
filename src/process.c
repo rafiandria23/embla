@@ -1,6 +1,4 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "embla/log.h"
 #include "embla/process.h"
@@ -79,7 +77,7 @@ ProcessId process_get_id(const Process *process)
 {
 	if (process == NULL)
 	{
-		return 0;
+		return EMBLA_INVALID_PID;
 	}
 
 	return process->id;

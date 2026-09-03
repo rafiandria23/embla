@@ -8,6 +8,7 @@
 typedef struct ProcessGroupManager ProcessGroupManager;
 
 ProcessGroupManager *process_group_manager_create(void);
+
 void process_group_manager_destroy(ProcessGroupManager *manager);
 
 ProcessGroup *process_group_manager_create_group(

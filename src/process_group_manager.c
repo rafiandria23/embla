@@ -5,6 +5,7 @@
 #include "embla/process_group_manager.h"
 
 #define PROCESS_GROUP_MANAGER_INITIAL_CAPACITY 16
+#define PROCESS_GROUP_MANAGER_NOT_FOUND ((size_t)-1)
 
 struct ProcessGroupManager
 {
@@ -106,6 +107,21 @@ ProcessGroup *process_group_manager_create_group(
 	return group;
 }
 
+static size_t process_group_manager_find_index(
+	const ProcessGroupManager *manager,
+	ProcessGroupId id)
+{
+	for (size_t i = 0; i < manager->count; i++)
+	{
+		if (process_group_get_id(manager->groups[i]) == id)
+		{
+			return i;
+		}
+	}
+
+	return PROCESS_GROUP_MANAGER_NOT_FOUND;
+}
+
 ProcessGroup *process_group_manager_get(
 	const ProcessGroupManager *manager,
 	ProcessGroupId id)
@@ -117,17 +133,14 @@ ProcessGroup *process_group_manager_get(
 		return NULL;
 	}
 
-	for (size_t i = 0; i < manager->count; i++)
-	{
-		ProcessGroup *group = manager->groups[i];
+	size_t index = process_group_manager_find_index(manager, id);
 
-		if (process_group_get_id(group) == id)
-		{
-			return group;
-		}
+	if (index == PROCESS_GROUP_MANAGER_NOT_FOUND)
+	{
+		return NULL;
 	}
 
-	return NULL;
+	return manager->groups[index];
 }
 
 size_t process_group_manager_count(const ProcessGroupManager *manager)
@@ -151,32 +164,29 @@ int process_group_manager_destroy_group(
 		return -1;
 	}
 
-	for (size_t i = 0; i < manager->count; i++)
+	size_t index = process_group_manager_find_index(manager, id);
+
+	if (index == PROCESS_GROUP_MANAGER_NOT_FOUND)
 	{
-		ProcessGroup *group = manager->groups[i];
-
-		if (process_group_get_id(group) != id)
-		{
-			continue;
-		}
-
-		if (process_group_count(group) != 0)
-		{
-			embla_log_error("cannot destroy non-empty process group");
-			return -1;
-		}
-
-		process_group_destroy(group);
-
-		size_t last = manager->count - 1;
-
-		manager->groups[i] = manager->groups[last];
-		manager->groups[last] = NULL;
-
-		manager->count--;
-
-		return 0;
+		return -1;
 	}
 
-	return -1;
+	ProcessGroup *group = manager->groups[index];
+
+	if (process_group_count(group) != 0)
+	{
+		embla_log_error("cannot destroy non-empty process group");
+		return -1;
+	}
+
+	process_group_destroy(group);
+
+	size_t last = manager->count - 1;
+
+	manager->groups[index] = manager->groups[last];
+	manager->groups[last] = NULL;
+
+	manager->count--;
+
+	return 0;
 }
