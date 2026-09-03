@@ -133,19 +133,63 @@ static void executor_child_exec(
 	int stdout_fd = process_config_get_stdout_fd(config);
 	int stderr_fd = process_config_get_stderr_fd(config);
 
-	if (stdin_fd != -1 && dup2(stdin_fd, STDIN_FILENO) == -1)
+	int redirect_fds[3];
+	size_t redirect_fd_count = 0;
+
+	if (stdin_fd != -1)
 	{
-		_exit(121);
+		if (dup2(stdin_fd, STDIN_FILENO) == -1)
+		{
+			_exit(121);
+		}
+
+		redirect_fds[redirect_fd_count++] = stdin_fd;
 	}
 
-	if (stdout_fd != -1 && dup2(stdout_fd, STDOUT_FILENO) == -1)
+	if (stdout_fd != -1)
 	{
-		_exit(122);
+		if (dup2(stdout_fd, STDOUT_FILENO) == -1)
+		{
+			_exit(122);
+		}
+
+		redirect_fds[redirect_fd_count++] = stdout_fd;
 	}
 
-	if (stderr_fd != -1 && dup2(stderr_fd, STDERR_FILENO) == -1)
+	if (stderr_fd != -1)
 	{
-		_exit(123);
+		if (dup2(stderr_fd, STDERR_FILENO) == -1)
+		{
+			_exit(123);
+		}
+
+		redirect_fds[redirect_fd_count++] = stderr_fd;
+	}
+
+	for (size_t i = 0; i < redirect_fd_count; i++)
+	{
+		int fd = redirect_fds[i];
+
+		if (fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO)
+		{
+			continue;
+		}
+
+		int already_closed = 0;
+
+		for (size_t j = 0; j < i; j++)
+		{
+			if (redirect_fds[j] == fd)
+			{
+				already_closed = 1;
+				break;
+			}
+		}
+
+		if (!already_closed)
+		{
+			close(fd);
+		}
 	}
 
 	if (process_config_has_credentials(config))
