@@ -446,6 +446,14 @@ static Process *embla_spawn_internal(
 		return NULL;
 	}
 
+	if (
+		process_group_has_max_members(group) &&
+		process_group_count(group) >= process_group_get_max_members(group))
+	{
+		embla_log_error("process group has reached its maximum member limit");
+		return NULL;
+	}
+
 	Process *process = process_manager_create_process(
 		embla->process_manager,
 		parent_id,

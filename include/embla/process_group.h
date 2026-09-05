@@ -31,4 +31,11 @@ int process_group_set_host_id(
 	ProcessGroup *group,
 	HostProcessGroupId host_id);
 
+int process_group_set_max_members(
+	ProcessGroup *group,
+	size_t max_members);
+
+int process_group_has_max_members(const ProcessGroup *group);
+size_t process_group_get_max_members(const ProcessGroup *group);
+
 #endif

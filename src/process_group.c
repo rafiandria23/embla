@@ -15,6 +15,9 @@ struct ProcessGroup
 
 	size_t count;
 	size_t capacity;
+
+	int has_max_members;
+	size_t max_members;
 };
 
 ProcessGroup *process_group_create(ProcessGroupId id)
@@ -49,6 +52,7 @@ ProcessGroup *process_group_create(ProcessGroupId id)
 	group->host_id = EMBLA_INVALID_HOST_PGID;
 	group->count = 0;
 	group->capacity = PROCESS_GROUP_INITIAL_CAPACITY;
+	group->has_max_members = 0;
 
 	return group;
 }
@@ -180,4 +184,39 @@ int process_group_set_host_id(
 	group->host_id = host_id;
 
 	return 0;
+}
+
+int process_group_set_max_members(
+	ProcessGroup *group,
+	size_t max_members)
+{
+	if (group == NULL)
+	{
+		return -1;
+	}
+
+	group->has_max_members = 1;
+	group->max_members = max_members;
+
+	return 0;
+}
+
+int process_group_has_max_members(const ProcessGroup *group)
+{
+	if (group == NULL)
+	{
+		return 0;
+	}
+
+	return group->has_max_members;
+}
+
+size_t process_group_get_max_members(const ProcessGroup *group)
+{
+	if (group == NULL)
+	{
+		return 0;
+	}
+
+	return group->max_members;
 }
