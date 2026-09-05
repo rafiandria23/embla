@@ -11,7 +11,15 @@ CFLAGS := \
 
 TARGET := build/embla
 
-SRC := $(wildcard src/*.c)
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+	PLATFORM_SRC := src/platform/memory_limit_darwin.c
+else
+	PLATFORM_SRC := src/platform/memory_limit_linux.c
+endif
+
+SRC := $(wildcard src/*.c) src/platform/rlimit_common.c $(PLATFORM_SRC)
 OBJ := $(SRC:src/%.c=build/%.o)
 DEP := $(OBJ:.o=.d)
 
@@ -28,7 +36,7 @@ $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $@
 
 build/%.o: src/%.c
-	mkdir -p build
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -Iinclude -c $< -o $@
 
 build/tests/%: tests/%.c $(LIB_OBJ)

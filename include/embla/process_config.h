@@ -1,6 +1,7 @@
 #ifndef EMBLA_PROCESS_CONFIG_H
 #define EMBLA_PROCESS_CONFIG_H
 
+#include <sys/resource.h>
 #include <sys/types.h>
 
 typedef struct ProcessConfig ProcessConfig;
@@ -50,5 +51,26 @@ int process_config_set_credentials(
 int process_config_has_credentials(const ProcessConfig *config);
 uid_t process_config_get_uid(const ProcessConfig *config);
 gid_t process_config_get_gid(const ProcessConfig *config);
+
+int process_config_set_memory_limit(
+	ProcessConfig *config,
+	rlim_t bytes);
+
+int process_config_has_memory_limit(const ProcessConfig *config);
+rlim_t process_config_get_memory_limit(const ProcessConfig *config);
+
+int process_config_set_cpu_limit(
+	ProcessConfig *config,
+	rlim_t seconds);
+
+int process_config_has_cpu_limit(const ProcessConfig *config);
+rlim_t process_config_get_cpu_limit(const ProcessConfig *config);
+
+int process_config_set_fd_limit(
+	ProcessConfig *config,
+	rlim_t count);
+
+int process_config_has_fd_limit(const ProcessConfig *config);
+rlim_t process_config_get_fd_limit(const ProcessConfig *config);
 
 #endif

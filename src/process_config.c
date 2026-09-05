@@ -26,6 +26,15 @@ struct ProcessConfig
 	int has_credentials;
 	uid_t uid;
 	gid_t gid;
+
+	int has_memory_limit;
+	rlim_t memory_limit;
+
+	int has_cpu_limit;
+	rlim_t cpu_limit;
+
+	int has_fd_limit;
+	rlim_t fd_limit;
 };
 
 static size_t count_array(char *const array[])
@@ -390,4 +399,109 @@ gid_t process_config_get_gid(const ProcessConfig *config)
 	}
 
 	return config->gid;
+}
+
+int process_config_set_memory_limit(
+	ProcessConfig *config,
+	rlim_t bytes)
+{
+	if (config == NULL)
+	{
+		return -1;
+	}
+
+	config->has_memory_limit = 1;
+	config->memory_limit = bytes;
+
+	return 0;
+}
+
+int process_config_has_memory_limit(const ProcessConfig *config)
+{
+	if (config == NULL)
+	{
+		return 0;
+	}
+
+	return config->has_memory_limit;
+}
+
+rlim_t process_config_get_memory_limit(const ProcessConfig *config)
+{
+	if (config == NULL)
+	{
+		return 0;
+	}
+
+	return config->memory_limit;
+}
+
+int process_config_set_cpu_limit(
+	ProcessConfig *config,
+	rlim_t seconds)
+{
+	if (config == NULL)
+	{
+		return -1;
+	}
+
+	config->has_cpu_limit = 1;
+	config->cpu_limit = seconds;
+
+	return 0;
+}
+
+int process_config_has_cpu_limit(const ProcessConfig *config)
+{
+	if (config == NULL)
+	{
+		return 0;
+	}
+
+	return config->has_cpu_limit;
+}
+
+rlim_t process_config_get_cpu_limit(const ProcessConfig *config)
+{
+	if (config == NULL)
+	{
+		return 0;
+	}
+
+	return config->cpu_limit;
+}
+
+int process_config_set_fd_limit(
+	ProcessConfig *config,
+	rlim_t count)
+{
+	if (config == NULL)
+	{
+		return -1;
+	}
+
+	config->has_fd_limit = 1;
+	config->fd_limit = count;
+
+	return 0;
+}
+
+int process_config_has_fd_limit(const ProcessConfig *config)
+{
+	if (config == NULL)
+	{
+		return 0;
+	}
+
+	return config->has_fd_limit;
+}
+
+rlim_t process_config_get_fd_limit(const ProcessConfig *config)
+{
+	if (config == NULL)
+	{
+		return 0;
+	}
+
+	return config->fd_limit;
 }

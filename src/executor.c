@@ -9,6 +9,7 @@
 
 #include "embla/executor.h"
 #include "embla/log.h"
+#include "embla/platform.h"
 
 extern char **environ;
 
@@ -189,6 +190,38 @@ static void executor_child_exec(
 		if (!already_closed)
 		{
 			close(fd);
+		}
+	}
+
+	if (process_config_has_memory_limit(config))
+	{
+		if (
+			platform_apply_memory_limit(
+				process_config_get_memory_limit(config)) != 0)
+		{
+			_exit(128);
+		}
+	}
+
+	if (process_config_has_cpu_limit(config))
+	{
+		if (
+			platform_apply_rlimit(
+				RLIMIT_CPU,
+				process_config_get_cpu_limit(config)) != 0)
+		{
+			_exit(129);
+		}
+	}
+
+	if (process_config_has_fd_limit(config))
+	{
+		if (
+			platform_apply_rlimit(
+				RLIMIT_NOFILE,
+				process_config_get_fd_limit(config)) != 0)
+		{
+			_exit(130);
 		}
 	}
 
