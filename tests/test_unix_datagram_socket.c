@@ -23,7 +23,7 @@ static const char *test_socket_path(void)
 {
 	static char path[256];
 
-	snprintf(path, sizeof(path), "/tmp/embla_test_unit_%d.sock", getpid());
+	snprintf(path, sizeof(path), "/tmp/embla_test_dgram_%d.sock", getpid());
 
 	return path;
 }
@@ -31,11 +31,8 @@ static const char *test_socket_path(void)
 static int test_create_rejects_null_path(void)
 {
 	CHECK(
-		unix_listener_create(NULL, 1) == NULL,
+		unix_datagram_socket_create(NULL) == NULL,
 		"a NULL path must be rejected");
-	CHECK(
-		unix_socket_connect(NULL) == -1,
-		"connecting to a NULL path must be rejected");
 
 	return 0;
 }
@@ -48,7 +45,7 @@ static int test_create_rejects_oversized_path(void)
 	huge_path[sizeof(huge_path) - 1] = '\0';
 
 	CHECK(
-		unix_listener_create(huge_path, 1) == NULL,
+		unix_datagram_socket_create(huge_path) == NULL,
 		"a path too long to fit in sun_path must be rejected");
 
 	return 0;
@@ -60,9 +57,9 @@ static int test_create_binds_a_real_filesystem_path(void)
 
 	unlink(path);
 
-	UnixListener *listener = unix_listener_create(path, 1);
+	UnixDatagramSocket *socket = unix_datagram_socket_create(path);
 
-	CHECK(listener != NULL, "create should succeed");
+	CHECK(socket != NULL, "create should succeed");
 
 	struct stat st;
 
@@ -73,7 +70,7 @@ static int test_create_binds_a_real_filesystem_path(void)
 		S_ISSOCK(st.st_mode),
 		"the created filesystem entry should be a socket");
 
-	unix_listener_destroy(listener);
+	unix_datagram_socket_destroy(socket);
 
 	CHECK(
 		stat(path, &st) != 0,
@@ -93,83 +90,112 @@ static int test_create_does_not_auto_unlink_existing_path(void)
 	CHECK(f != NULL, "creating a placeholder file should succeed");
 	fclose(f);
 
-	UnixListener *listener = unix_listener_create(path, 1);
+	UnixDatagramSocket *socket = unix_datagram_socket_create(path);
 
 	CHECK(
-		listener == NULL,
+		socket == NULL,
 		"create must fail rather than silently removing an "
-		"existing file at the path -- this module never unlinks "
-		"anything it didn't itself create");
+		"existing file at the path");
 
 	unlink(path);
 
 	return 0;
 }
 
-static int test_listener_fd_accessor(void)
+static int test_fd_accessor_and_cloexec_default(void)
 {
 	const char *path = test_socket_path();
 
 	unlink(path);
 
-	UnixListener *listener = unix_listener_create(path, 1);
+	UnixDatagramSocket *socket = unix_datagram_socket_create(path);
 
-	CHECK(listener != NULL, "create should succeed");
-	CHECK(
-		unix_listener_fd(listener) >= 0,
-		"the listening fd accessor should return a valid fd");
+	CHECK(socket != NULL, "create should succeed");
 
-	unix_listener_destroy(listener);
+	int fd = unix_datagram_socket_fd(socket);
 
-	return 0;
-}
+	CHECK(fd >= 0, "the fd accessor should return a valid fd");
 
-static int test_listener_fd_is_cloexec_by_default(void)
-{
-	const char *path = test_socket_path();
-
-	unlink(path);
-
-	UnixListener *listener = unix_listener_create(path, 1);
-
-	CHECK(listener != NULL, "create should succeed");
-
-	int flags = fcntl(unix_listener_fd(listener), F_GETFD);
+	int flags = fcntl(fd, F_GETFD);
 
 	CHECK(
 		(flags & FD_CLOEXEC) != 0,
-		"the listening fd must be close-on-exec by default");
+		"the bound fd must be close-on-exec by default");
 
-	unix_listener_destroy(listener);
+	unix_datagram_socket_destroy(socket);
 
 	return 0;
 }
 
 static int test_destroy_null_is_safe(void)
 {
-	unix_listener_destroy(NULL);
+	unix_datagram_socket_destroy(NULL);
 
 	return 0;
 }
 
-static int test_accept_null_listener_fails(void)
+static int test_fd_accessor_null_is_safe(void)
 {
 	CHECK(
-		unix_listener_accept(NULL) == -1,
-		"accepting on a NULL listener must fail");
+		unix_datagram_socket_fd(NULL) == -1,
+		"fd accessor on NULL should return -1");
 
 	return 0;
 }
 
-static int test_connect_with_nothing_listening_fails(void)
+static int test_send_rejects_null_arguments(void)
+{
+	const char *path = test_socket_path();
+
+	CHECK(
+		unix_datagram_socket_send(NULL, "hello") == -1,
+		"send with a NULL path must fail");
+	CHECK(
+		unix_datagram_socket_send(path, NULL) == -1,
+		"send with a NULL message must fail");
+
+	return 0;
+}
+
+static int test_send_with_nothing_listening_fails(void)
 {
 	const char *path = test_socket_path();
 
 	unlink(path);
 
 	CHECK(
-		unix_socket_connect(path) == -1,
-		"connecting to a path with no listener must fail, not hang");
+		unix_datagram_socket_send(path, "hello") == -1,
+		"sending to a path with nothing bound must fail, not hang "
+		"or silently succeed");
+
+	return 0;
+}
+
+static int test_send_and_receive_within_one_process(void)
+{
+	const char *path = test_socket_path();
+
+	unlink(path);
+
+	UnixDatagramSocket *socket = unix_datagram_socket_create(path);
+
+	CHECK(socket != NULL, "create should succeed");
+	CHECK(
+		unix_datagram_socket_send(path, "READY=1\n") == 0,
+		"sending should succeed");
+
+	char buf[64];
+	ssize_t n = read(unix_datagram_socket_fd(socket), buf, sizeof(buf) - 1);
+
+	CHECK(n > 0, "reading the sent message should succeed");
+
+	buf[n] = '\0';
+
+	CHECK(
+		strcmp(buf, "READY=1\n") == 0,
+		"the received message should match exactly what was sent");
+
+	unix_datagram_socket_destroy(socket);
 
 	return 0;
 }
@@ -194,16 +220,23 @@ int main(void)
 			"create_does_not_auto_unlink_existing_path",
 			test_create_does_not_auto_unlink_existing_path,
 		},
-		{"listener_fd_accessor", test_listener_fd_accessor},
 		{
-			"listener_fd_is_cloexec_by_default",
-			test_listener_fd_is_cloexec_by_default,
+			"fd_accessor_and_cloexec_default",
+			test_fd_accessor_and_cloexec_default,
 		},
 		{"destroy_null_is_safe", test_destroy_null_is_safe},
-		{"accept_null_listener_fails", test_accept_null_listener_fails},
+		{"fd_accessor_null_is_safe", test_fd_accessor_null_is_safe},
 		{
-			"connect_with_nothing_listening_fails",
-			test_connect_with_nothing_listening_fails,
+			"send_rejects_null_arguments",
+			test_send_rejects_null_arguments,
+		},
+		{
+			"send_with_nothing_listening_fails",
+			test_send_with_nothing_listening_fails,
+		},
+		{
+			"send_and_receive_within_one_process",
+			test_send_and_receive_within_one_process,
 		},
 	};
 
