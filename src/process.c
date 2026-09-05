@@ -83,6 +83,18 @@ ProcessId process_get_id(const Process *process)
 	return process->id;
 }
 
+int process_set_parent_id(Process *process, ProcessId parent_id)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->parent_id = parent_id;
+
+	return 0;
+}
+
 ProcessId process_get_parent_id(const Process *process)
 {
 	if (process == NULL)
@@ -91,16 +103,6 @@ ProcessId process_get_parent_id(const Process *process)
 	}
 
 	return process->parent_id;
-}
-
-ProcessGroupId process_get_group_id(const Process *process)
-{
-	if (process == NULL)
-	{
-		return EMBLA_INVALID_PGID;
-	}
-
-	return process->group_id;
 }
 
 int process_set_group_id(Process *process, ProcessGroupId group_id)
@@ -115,14 +117,14 @@ int process_set_group_id(Process *process, ProcessGroupId group_id)
 	return 0;
 }
 
-HostProcessId process_get_host_id(const Process *process)
+ProcessGroupId process_get_group_id(const Process *process)
 {
 	if (process == NULL)
 	{
-		return EMBLA_INVALID_HOST_PID;
+		return EMBLA_INVALID_PGID;
 	}
 
-	return process->host_id;
+	return process->group_id;
 }
 
 int process_set_host_id(Process *process, HostProcessId host_id)
@@ -135,6 +137,16 @@ int process_set_host_id(Process *process, HostProcessId host_id)
 	process->host_id = host_id;
 
 	return 0;
+}
+
+HostProcessId process_get_host_id(const Process *process)
+{
+	if (process == NULL)
+	{
+		return EMBLA_INVALID_HOST_PID;
+	}
+
+	return process->host_id;
 }
 
 ProcessState process_get_state(const Process *process)
@@ -225,16 +237,6 @@ const char *process_state_name(ProcessState state)
 	return "UNKNOWN";
 }
 
-int process_get_exit_code(const Process *process)
-{
-	if (process == NULL)
-	{
-		return -1;
-	}
-
-	return process->exit_code;
-}
-
 int process_set_exit_code(Process *process, int exit_code)
 {
 	if (process == NULL)
@@ -247,14 +249,14 @@ int process_set_exit_code(Process *process, int exit_code)
 	return 0;
 }
 
-int process_get_term_signal(const Process *process)
+int process_get_exit_code(const Process *process)
 {
 	if (process == NULL)
 	{
 		return -1;
 	}
 
-	return process->term_signal;
+	return process->exit_code;
 }
 
 int process_set_term_signal(Process *process, int term_signal)
@@ -269,14 +271,12 @@ int process_set_term_signal(Process *process, int term_signal)
 	return 0;
 }
 
-int process_set_parent_id(Process *process, ProcessId parent_id)
+int process_get_term_signal(const Process *process)
 {
 	if (process == NULL)
 	{
 		return -1;
 	}
 
-	process->parent_id = parent_id;
-
-	return 0;
+	return process->term_signal;
 }

@@ -34,14 +34,15 @@ Process *process_create(
 void process_destroy(Process *process);
 
 ProcessId process_get_id(const Process *process);
+
+int process_set_parent_id(Process *process, ProcessId parent_id);
 ProcessId process_get_parent_id(const Process *process);
 
+int process_set_group_id(Process *process, ProcessGroupId group_id);
 ProcessGroupId process_get_group_id(const Process *process);
 
-int process_set_group_id(Process *process, ProcessGroupId group_id);
-
-HostProcessId process_get_host_id(const Process *process);
 int process_set_host_id(Process *process, HostProcessId host_id);
+HostProcessId process_get_host_id(const Process *process);
 
 ProcessState process_get_state(const Process *process);
 
@@ -49,12 +50,10 @@ int process_transition(Process *process, ProcessState next_state);
 
 const char *process_state_name(ProcessState state);
 
-int process_get_exit_code(const Process *process);
 int process_set_exit_code(Process *process, int exit_code);
+int process_get_exit_code(const Process *process);
 
-int process_get_term_signal(const Process *process);
 int process_set_term_signal(Process *process, int term_signal);
-
-int process_set_parent_id(Process *process, ProcessId parent_id);
+int process_get_term_signal(const Process *process);
 
 #endif

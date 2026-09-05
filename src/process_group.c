@@ -162,16 +162,6 @@ int process_group_remove(
 	return 0;
 }
 
-HostProcessGroupId process_group_get_host_id(const ProcessGroup *group)
-{
-	if (group == NULL)
-	{
-		return EMBLA_INVALID_HOST_PGID;
-	}
-
-	return group->host_id;
-}
-
 int process_group_set_host_id(
 	ProcessGroup *group,
 	HostProcessGroupId host_id)
@@ -184,6 +174,16 @@ int process_group_set_host_id(
 	group->host_id = host_id;
 
 	return 0;
+}
+
+HostProcessGroupId process_group_get_host_id(const ProcessGroup *group)
+{
+	if (group == NULL)
+	{
+		return EMBLA_INVALID_HOST_PGID;
+	}
+
+	return group->host_id;
 }
 
 int process_group_set_max_members(

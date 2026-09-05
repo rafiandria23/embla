@@ -25,11 +25,11 @@ int process_group_add(ProcessGroup *group, Process *process);
 
 int process_group_remove(ProcessGroup *group, Process *process);
 
-HostProcessGroupId process_group_get_host_id(const ProcessGroup *group);
-
 int process_group_set_host_id(
 	ProcessGroup *group,
 	HostProcessGroupId host_id);
+
+HostProcessGroupId process_group_get_host_id(const ProcessGroup *group);
 
 int process_group_set_max_members(
 	ProcessGroup *group,
