@@ -29,6 +29,16 @@ int service_start(Service *service, Embla *embla)
 		return -1;
 	}
 
+	if (service_set_last_start_time(service, service_monotonic_now()) != 0)
+	{
+		return -1;
+	}
+
+	if (service_set_permanently_failed(service, 0) != 0)
+	{
+		return -1;
+	}
+
 	if (service_set_state(service, SERVICE_RUNNING) != 0)
 	{
 		return -1;
@@ -52,6 +62,11 @@ int service_stop(Service *service, Embla *embla)
 	Process *process = service_get_process(service);
 
 	if (process == NULL)
+	{
+		return -1;
+	}
+
+	if (service_set_stop_requested(service, 1) != 0)
 	{
 		return -1;
 	}
