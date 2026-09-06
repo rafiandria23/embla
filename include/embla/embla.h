@@ -14,7 +14,7 @@ typedef enum
 {
 	EMBLA_STOPPED,
 	EMBLA_RUNNING,
-	EMBLA_STOPPING
+	EMBLA_STOPPING,
 } EmblaState;
 
 Embla *embla_create(void);
@@ -49,10 +49,8 @@ int embla_stop_process(Embla *embla, Process *process);
 int embla_continue_process(Embla *embla, Process *process);
 int embla_kill(Embla *embla, Process *process);
 
-int embla_reap_child(
-	Embla *embla,
-	ProcessId parent_id,
-	ProcessId *child_id);
+int embla_reap_child(Embla *embla, ProcessId parent_id, ProcessId *child_id);
+int embla_reap_process(Embla *embla, ProcessId process_id);
 
 int embla_signal_group(Embla *embla, ProcessGroup *group, int signal);
 int embla_stop_group(Embla *embla, ProcessGroup *group);

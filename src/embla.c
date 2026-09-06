@@ -22,8 +22,6 @@ struct Embla
 	EmblaState state;
 };
 
-static int embla_reap_root_children(Embla *embla);
-
 Embla *embla_create(void)
 {
 	Embla *embla = malloc(sizeof(*embla));
@@ -90,6 +88,37 @@ Embla *embla_create(void)
 	embla_log_info("runtime created");
 
 	return embla;
+}
+
+static int embla_reap_root_children(Embla *embla)
+{
+	if (embla == NULL)
+	{
+		return -1;
+	}
+
+	for (;;)
+	{
+		Process *child = process_manager_wait_child(
+			embla->process_manager,
+			EMBLA_ROOT_PID);
+
+		if (child == NULL)
+		{
+			return 0;
+		}
+
+		ProcessId child_id;
+
+		if (embla_reap_child(
+				embla,
+				EMBLA_ROOT_PID,
+				&child_id) != 0)
+		{
+			embla_log_error("failed to reap root child");
+			return -1;
+		}
+	}
 }
 
 static int embla_shutdown(Embla *embla)
@@ -708,27 +737,9 @@ int embla_kill(
 		SIGKILL);
 }
 
-int embla_reap_child(
-	Embla *embla,
-	ProcessId parent_id,
-	ProcessId *child_id)
+static int embla_reap_found_process(Embla *embla, Process *process)
 {
-	if (embla == NULL)
-	{
-		return -1;
-	}
-
-	Process *process = process_manager_wait_child(
-		embla->process_manager,
-		parent_id);
-
-	if (process == NULL)
-	{
-		return -1;
-	}
-
 	ProcessId process_id = process_get_id(process);
-
 	ProcessGroupId group_id = process_get_group_id(process);
 
 	ProcessGroup *group = process_group_manager_get(
@@ -755,9 +766,7 @@ int embla_reap_child(
 			embla->process_manager,
 			process_id) != 0)
 	{
-		embla_log_error(
-			"failed to destroy reaped process");
-
+		embla_log_error("failed to destroy reaped process");
 		return -1;
 	}
 
@@ -767,11 +776,35 @@ int embla_reap_child(
 				embla->process_group_manager,
 				group_id) != 0)
 		{
-			embla_log_error(
-				"failed to destroy empty process group");
-
+			embla_log_error("failed to destroy empty process group");
 			return -1;
 		}
+	}
+
+	return 0;
+}
+
+int embla_reap_child(Embla *embla, ProcessId parent_id, ProcessId *child_id)
+{
+	if (embla == NULL)
+	{
+		return -1;
+	}
+
+	Process *process = process_manager_wait_child(
+		embla->process_manager,
+		parent_id);
+
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	ProcessId process_id = process_get_id(process);
+
+	if (embla_reap_found_process(embla, process) != 0)
+	{
+		return -1;
 	}
 
 	if (child_id != NULL)
@@ -782,41 +815,31 @@ int embla_reap_child(
 	return 0;
 }
 
-static int embla_reap_root_children(Embla *embla)
+int embla_reap_process(Embla *embla, ProcessId process_id)
 {
 	if (embla == NULL)
 	{
 		return -1;
 	}
 
-	for (;;)
+	Process *process = process_manager_get(
+		embla->process_manager,
+		process_id);
+
+	if (process == NULL)
 	{
-		Process *child = process_manager_wait_child(
-			embla->process_manager,
-			EMBLA_ROOT_PID);
-
-		if (child == NULL)
-		{
-			return 0;
-		}
-
-		ProcessId child_id;
-
-		if (embla_reap_child(
-				embla,
-				EMBLA_ROOT_PID,
-				&child_id) != 0)
-		{
-			embla_log_error("failed to reap root child");
-			return -1;
-		}
+		return -1;
 	}
+
+	if (process_get_state(process) != PROCESS_TERMINATED)
+	{
+		return -1;
+	}
+
+	return embla_reap_found_process(embla, process);
 }
 
-int embla_signal_group(
-	Embla *embla,
-	ProcessGroup *group,
-	int signal)
+int embla_signal_group(Embla *embla, ProcessGroup *group, int signal)
 {
 	if (embla == NULL || group == NULL)
 	{
@@ -836,9 +859,7 @@ int embla_signal_group(
 		signal);
 }
 
-int embla_stop_group(
-	Embla *embla,
-	ProcessGroup *group)
+int embla_stop_group(Embla *embla, ProcessGroup *group)
 {
 	if (embla == NULL || group == NULL)
 	{
@@ -851,9 +872,7 @@ int embla_stop_group(
 		SIGSTOP);
 }
 
-int embla_continue_group(
-	Embla *embla,
-	ProcessGroup *group)
+int embla_continue_group(Embla *embla, ProcessGroup *group)
 {
 	if (embla == NULL || group == NULL)
 	{
@@ -866,9 +885,7 @@ int embla_continue_group(
 		SIGCONT);
 }
 
-int embla_terminate_group(
-	Embla *embla,
-	ProcessGroup *group)
+int embla_terminate_group(Embla *embla, ProcessGroup *group)
 {
 	if (embla == NULL || group == NULL)
 	{
@@ -881,9 +898,7 @@ int embla_terminate_group(
 		SIGTERM);
 }
 
-int embla_kill_group(
-	Embla *embla,
-	ProcessGroup *group)
+int embla_kill_group(Embla *embla, ProcessGroup *group)
 {
 	if (embla == NULL || group == NULL)
 	{
