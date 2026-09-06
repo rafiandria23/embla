@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -35,11 +36,13 @@ static int wait_for_group_state(
 	{
 		HostProcessId host_id;
 		int wait_status;
+		struct rusage usage;
 
 		int result = executor_poll_any(
 			embla_executor(embla),
 			&host_id,
-			&wait_status);
+			&wait_status,
+			&usage);
 
 		if (result < 0)
 		{
@@ -113,11 +116,13 @@ static int drain_terminations(
 	{
 		HostProcessId host_id;
 		int wait_status;
+		struct rusage usage;
 
 		int result = executor_poll_any(
 			embla_executor(embla),
 			&host_id,
-			&wait_status);
+			&wait_status,
+			&usage);
 
 		if (result < 0)
 		{
@@ -174,6 +179,11 @@ static int drain_terminations(
 			return -1;
 		}
 
+		if (executor_apply_rusage(process, &usage) != 0)
+		{
+			return -1;
+		}
+
 		if (scheduler_remove(embla_scheduler(embla), process) != 0)
 		{
 			return -1;
@@ -197,12 +207,23 @@ static int run_lifecycle_test(void)
 
 	CHECK(config != NULL, "creating the shared process config should succeed");
 
-	Process *parent = embla_spawn(embla, "parent", config);
+	Process *parent = embla_spawn(
+		embla,
+		"parent",
+		config);
 
 	CHECK(parent != NULL, "spawning the root-owned parent should succeed");
 
-	Process *first_child = embla_spawn_child(embla, parent, "first-child", config);
-	Process *second_child = embla_spawn_child(embla, parent, "second-child", config);
+	Process *first_child = embla_spawn_child(
+		embla,
+		parent,
+		"first-child",
+		config);
+	Process *second_child = embla_spawn_child(
+		embla,
+		parent,
+		"second-child",
+		config);
 
 	CHECK(first_child != NULL, "spawning first_child should succeed");
 	CHECK(second_child != NULL, "spawning second_child should succeed");
@@ -216,7 +237,8 @@ static int run_lifecycle_test(void)
 		process_group_count(group) == 3,
 		"the group should have exactly 3 members");
 	CHECK(
-		process_get_group_id(first_child) == group_id && process_get_group_id(second_child) == group_id,
+		process_get_group_id(first_child) == group_id &&
+			process_get_group_id(second_child) == group_id,
 		"both children must share the parent's logical group");
 
 	HostProcessGroupId host_pgid = process_group_get_host_id(group);
@@ -289,7 +311,10 @@ static int run_lifecycle_test(void)
 		ProcessId reaped_id;
 
 		CHECK(
-			embla_reap_child(embla, parent_id, &reaped_id) == 0,
+			embla_reap_child(
+				embla,
+				parent_id,
+				&reaped_id) == 0,
 			"reaping a terminated child of parent should succeed");
 	}
 
@@ -304,7 +329,10 @@ static int run_lifecycle_test(void)
 	ProcessId reaped_root_id;
 
 	CHECK(
-		embla_reap_child(embla, EMBLA_ROOT_PID, &reaped_root_id) == 0,
+		embla_reap_child(
+			embla,
+			EMBLA_ROOT_PID,
+			&reaped_root_id) == 0,
 		"reaping the root-owned parent should succeed");
 
 	CHECK(

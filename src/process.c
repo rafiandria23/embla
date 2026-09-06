@@ -20,6 +20,10 @@ struct Process
 
 	int exit_code;
 	int term_signal;
+
+	double cpu_user_seconds;
+	double cpu_system_seconds;
+	long max_rss_bytes;
 };
 
 Process *process_create(
@@ -58,6 +62,10 @@ Process *process_create(
 
 	process->exit_code = -1;
 	process->term_signal = -1;
+
+	process->cpu_user_seconds = -1.0;
+	process->cpu_system_seconds = -1.0;
+	process->max_rss_bytes = -1;
 
 	return process;
 }
@@ -279,4 +287,70 @@ int process_get_term_signal(const Process *process)
 	}
 
 	return process->term_signal;
+}
+
+int process_set_cpu_user_seconds(Process *process, double seconds)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->cpu_user_seconds = seconds;
+
+	return 0;
+}
+
+double process_get_cpu_user_seconds(const Process *process)
+{
+	if (process == NULL)
+	{
+		return -1.0;
+	}
+
+	return process->cpu_user_seconds;
+}
+
+int process_set_cpu_system_seconds(Process *process, double seconds)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->cpu_system_seconds = seconds;
+
+	return 0;
+}
+
+double process_get_cpu_system_seconds(const Process *process)
+{
+	if (process == NULL)
+	{
+		return -1.0;
+	}
+
+	return process->cpu_system_seconds;
+}
+
+int process_set_max_rss_bytes(Process *process, long bytes)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	process->max_rss_bytes = bytes;
+
+	return 0;
+}
+
+long process_get_max_rss_bytes(const Process *process)
+{
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	return process->max_rss_bytes;
 }

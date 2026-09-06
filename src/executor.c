@@ -1,8 +1,11 @@
 #define _POSIX_C_SOURCE 200809L
 
+#define _DEFAULT_SOURCE
+
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -52,7 +55,30 @@ static pid_t executor_waitpid_retry(
 
 	do
 	{
-		result = waitpid(pid, wait_status, options);
+		result = waitpid(
+			pid,
+			wait_status,
+			options);
+	} while (result == -1 && errno == EINTR);
+
+	return result;
+}
+
+static pid_t executor_wait4_retry(
+	pid_t pid,
+	int *wait_status,
+	int options,
+	struct rusage *usage)
+{
+	pid_t result;
+
+	do
+	{
+		result = wait4(
+			pid,
+			wait_status,
+			options,
+			usage);
 	} while (result == -1 && errno == EINTR);
 
 	return result;
@@ -103,6 +129,41 @@ static int executor_apply_termination(
 	if (process_transition(process, PROCESS_TERMINATED) != 0)
 	{
 		embla_log_error("failed to transition process to TERMINATED");
+		return -1;
+	}
+
+	return 0;
+}
+
+int executor_apply_rusage(
+	Process *process,
+	const struct rusage *usage)
+{
+	if (process == NULL || usage == NULL)
+	{
+		return -1;
+	}
+
+	double user_seconds =
+		usage->ru_utime.tv_sec + usage->ru_utime.tv_usec / 1e6;
+	double system_seconds =
+		usage->ru_stime.tv_sec + usage->ru_stime.tv_usec / 1e6;
+
+	if (process_set_cpu_user_seconds(process, user_seconds) != 0)
+	{
+		return -1;
+	}
+
+	if (process_set_cpu_system_seconds(process, system_seconds) != 0)
+	{
+		return -1;
+	}
+
+	if (
+		process_set_max_rss_bytes(
+			process,
+			platform_normalize_max_rss(usage->ru_maxrss)) != 0)
+	{
 		return -1;
 	}
 
@@ -315,7 +376,10 @@ int executor_terminate(Executor *executor, Process *process)
 	return executor_kill_and_reap(host_id);
 }
 
-int executor_wait(Executor *executor, Process *process, int *status)
+int executor_wait(
+	Executor *executor,
+	Process *process,
+	int *status)
 {
 	if (executor == NULL || process == NULL)
 	{
@@ -330,8 +394,9 @@ int executor_wait(Executor *executor, Process *process, int *status)
 	}
 
 	int wait_status;
+	struct rusage usage;
 
-	pid_t result = executor_waitpid_retry(host_id, &wait_status, 0);
+	pid_t result = executor_wait4_retry(host_id, &wait_status, 0, &usage);
 
 	if (result == -1)
 	{
@@ -341,6 +406,12 @@ int executor_wait(Executor *executor, Process *process, int *status)
 
 	if (executor_apply_termination(process, wait_status) != 0)
 	{
+		return -1;
+	}
+
+	if (executor_apply_rusage(process, &usage) != 0)
+	{
+		embla_log_error("failed to apply resource usage");
 		return -1;
 	}
 
@@ -398,22 +469,25 @@ int executor_poll(Executor *executor, Process *process)
 int executor_poll_any(
 	Executor *executor,
 	HostProcessId *host_id,
-	int *status)
+	int *status,
+	struct rusage *out_usage)
 {
 	if (
 		executor == NULL ||
 		host_id == NULL ||
-		status == NULL)
+		status == NULL ||
+		out_usage == NULL)
 	{
 		return -1;
 	}
 
 	int wait_status = 0;
 
-	pid_t result = executor_waitpid_retry(
+	pid_t result = executor_wait4_retry(
 		-1,
 		&wait_status,
-		WNOHANG | WUNTRACED | WCONTINUED);
+		WNOHANG | WUNTRACED | WCONTINUED,
+		out_usage);
 
 	if (result == -1)
 	{

@@ -56,4 +56,13 @@ int process_get_exit_code(const Process *process);
 int process_set_term_signal(Process *process, int term_signal);
 int process_get_term_signal(const Process *process);
 
+int process_set_cpu_user_seconds(Process *process, double seconds);
+double process_get_cpu_user_seconds(const Process *process);
+
+int process_set_cpu_system_seconds(Process *process, double seconds);
+double process_get_cpu_system_seconds(const Process *process);
+
+int process_set_max_rss_bytes(Process *process, long bytes);
+long process_get_max_rss_bytes(const Process *process);
+
 #endif

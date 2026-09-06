@@ -1,6 +1,8 @@
 #ifndef EMBLA_EXECUTOR_H
 #define EMBLA_EXECUTOR_H
 
+#include <sys/resource.h>
+
 #include "embla/process.h"
 #include "embla/process_config.h"
 #include "embla/process_group.h"
@@ -33,7 +35,12 @@ int executor_poll(Executor *executor, Process *process);
 int executor_poll_any(
 	Executor *executor,
 	HostProcessId *host_id,
-	int *status);
+	int *status,
+	struct rusage *out_usage);
+
+int executor_apply_rusage(
+	Process *process,
+	const struct rusage *usage);
 
 int executor_signal(
 	Executor *executor,

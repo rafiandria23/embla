@@ -11,3 +11,8 @@ int platform_apply_memory_limit(rlim_t bytes)
 
 	return -1;
 }
+
+long platform_normalize_max_rss(long raw_ru_maxrss)
+{
+	return raw_ru_maxrss;
+}

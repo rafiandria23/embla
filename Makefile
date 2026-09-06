@@ -1,5 +1,15 @@
 CC := clang
 
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+	PLATFORM_SRC := src/platform/memory_limit_darwin.c
+	PLATFORM_CFLAGS := -D_DARWIN_C_SOURCE
+else
+	PLATFORM_SRC := src/platform/memory_limit_linux.c
+	PLATFORM_CFLAGS := -D_DEFAULT_SOURCE
+endif
+
 CFLAGS := \
 	-std=c17 \
 	-Wall \
@@ -7,17 +17,10 @@ CFLAGS := \
 	-Wpedantic \
 	-g \
 	-MMD \
-	-MP
+	-MP \
+	$(PLATFORM_CFLAGS)
 
 TARGET := build/embla
-
-UNAME_S := $(shell uname -s)
-
-ifeq ($(UNAME_S),Darwin)
-	PLATFORM_SRC := src/platform/memory_limit_darwin.c
-else
-	PLATFORM_SRC := src/platform/memory_limit_linux.c
-endif
 
 SRC := $(wildcard src/*.c) src/platform/rlimit_common.c $(PLATFORM_SRC)
 OBJ := $(SRC:src/%.c=build/%.o)

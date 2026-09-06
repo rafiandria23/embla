@@ -11,4 +11,6 @@ int platform_memory_limit_supported(void);
 
 int platform_apply_memory_limit(rlim_t bytes);
 
+long platform_normalize_max_rss(long raw_ru_maxrss);
+
 #endif

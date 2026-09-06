@@ -118,7 +118,8 @@ static int embla_shutdown(Embla *embla)
 static int embla_handle_child_event(
 	Embla *embla,
 	HostProcessId host_id,
-	int wait_status)
+	int wait_status,
+	const struct rusage *usage)
 {
 	if (embla == NULL)
 	{
@@ -184,6 +185,12 @@ terminated:
 		return -1;
 	}
 
+	if (executor_apply_rusage(process, usage) != 0)
+	{
+		embla_log_error("failed to apply resource usage");
+		return -1;
+	}
+
 	if (process_manager_reparent_children(
 			embla->process_manager,
 			process_get_id(process),
@@ -232,11 +239,13 @@ int embla_run(Embla *embla)
 	{
 		HostProcessId host_id;
 		int wait_status;
+		struct rusage usage;
 
 		int result = executor_poll_any(
 			embla->executor,
 			&host_id,
-			&wait_status);
+			&wait_status,
+			&usage);
 
 		if (result < 0)
 		{
@@ -250,7 +259,8 @@ int embla_run(Embla *embla)
 			if (embla_handle_child_event(
 					embla,
 					host_id,
-					wait_status) != 0)
+					wait_status,
+					&usage) != 0)
 			{
 				embla_log_error("failed to handle child process exit");
 				embla->state = EMBLA_STOPPED;
@@ -524,6 +534,7 @@ static Process *embla_spawn_internal(
 	{
 		embla_log_error("failed to add process to scheduler");
 		embla_spawn_rollback(embla, group, process, process_id, true);
+
 		return NULL;
 	}
 
