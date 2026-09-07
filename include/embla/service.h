@@ -74,4 +74,9 @@ double service_get_restart_allowed_at(const Service *service);
 
 double service_monotonic_now(void);
 
+int service_add_dependency(Service *service, const char *dependency_name);
+
+int service_get_dependency_count(const Service *service);
+const char *service_get_dependency_name(const Service *service, size_t index);
+
 #endif

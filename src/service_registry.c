@@ -60,9 +60,7 @@ void service_registry_destroy(ServiceRegistry *registry)
 	free(registry);
 }
 
-static size_t service_registry_find_index(
-	const ServiceRegistry *registry,
-	const char *name)
+static size_t service_registry_find_index(const ServiceRegistry *registry, const char *name)
 {
 	for (size_t i = 0; i < registry->count; i++)
 	{
@@ -77,13 +75,9 @@ static size_t service_registry_find_index(
 	return SERVICE_REGISTRY_NOT_FOUND;
 }
 
-int service_registry_register(
-	ServiceRegistry *registry,
-	Service *service)
+int service_registry_register(ServiceRegistry *registry, Service *service)
 {
-	if (
-		registry == NULL ||
-		service == NULL)
+	if (registry == NULL || service == NULL)
 	{
 		return -1;
 	}
@@ -109,20 +103,14 @@ int service_registry_register(
 	return 0;
 }
 
-Service *service_registry_get(
-	const ServiceRegistry *registry,
-	const char *name)
+Service *service_registry_get(const ServiceRegistry *registry, const char *name)
 {
-	if (
-		registry == NULL ||
-		name == NULL)
+	if (registry == NULL || name == NULL)
 	{
 		return NULL;
 	}
 
-	size_t index = service_registry_find_index(
-		registry,
-		name);
+	size_t index = service_registry_find_index(registry, name);
 
 	if (index == SERVICE_REGISTRY_NOT_FOUND)
 	{
@@ -142,13 +130,19 @@ size_t service_registry_count(const ServiceRegistry *registry)
 	return registry->count;
 }
 
-int service_registry_unregister(
-	ServiceRegistry *registry,
-	const char *name)
+Service *service_registry_get_at(const ServiceRegistry *registry, size_t index)
 {
-	if (
-		registry == NULL ||
-		name == NULL)
+	if (registry == NULL || index >= registry->count)
+	{
+		return NULL;
+	}
+
+	return registry->services[index];
+}
+
+int service_registry_unregister(ServiceRegistry *registry, const char *name)
+{
+	if (registry == NULL || name == NULL)
 	{
 		return -1;
 	}

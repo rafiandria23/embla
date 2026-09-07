@@ -1,11 +1,14 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "embla/log.h"
 #include "embla/service.h"
 #include "embla/string.h"
+
+#define SERVICE_MAX_DEPENDENCIES 16
 
 struct Service
 {
@@ -30,6 +33,9 @@ struct Service
 	int restart_pending;
 	double last_start_time;
 	double restart_allowed_at;
+
+	char *dependencies[SERVICE_MAX_DEPENDENCIES];
+	int dependency_count;
 };
 
 Service *service_create(const char *name, ProcessConfig *config)
@@ -78,6 +84,8 @@ Service *service_create(const char *name, ProcessConfig *config)
 	service->last_start_time = 0.0;
 	service->restart_allowed_at = 0.0;
 
+	service->dependency_count = 0;
+
 	return service;
 }
 
@@ -86,6 +94,11 @@ void service_destroy(Service *service)
 	if (service == NULL)
 	{
 		return;
+	}
+
+	for (int i = 0; i < service->dependency_count; i++)
+	{
+		free(service->dependencies[i]);
 	}
 
 	free(service->name);
@@ -450,4 +463,57 @@ double service_monotonic_now(void)
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 
 	return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
+int service_add_dependency(Service *service, const char *dependency_name)
+{
+	if (service == NULL || dependency_name == NULL)
+	{
+		return -1;
+	}
+
+	if (strcmp(dependency_name, service->name) == 0)
+	{
+		embla_log_error("a service cannot depend on itself");
+		return -1;
+	}
+
+	if (service->dependency_count >= SERVICE_MAX_DEPENDENCIES)
+	{
+		embla_log_error("service dependency capacity exceeded");
+		return -1;
+	}
+
+	char *copy = embla_strdup(dependency_name);
+
+	if (copy == NULL)
+	{
+		embla_log_error("failed to duplicate dependency name");
+		return -1;
+	}
+
+	service->dependencies[service->dependency_count] = copy;
+	service->dependency_count++;
+
+	return 0;
+}
+
+int service_get_dependency_count(const Service *service)
+{
+	if (service == NULL)
+	{
+		return 0;
+	}
+
+	return service->dependency_count;
+}
+
+const char *service_get_dependency_name(const Service *service, size_t index)
+{
+	if (service == NULL || (int)index >= service->dependency_count)
+	{
+		return NULL;
+	}
+
+	return service->dependencies[index];
 }

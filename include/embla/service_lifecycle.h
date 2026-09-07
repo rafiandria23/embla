@@ -8,6 +8,8 @@ int service_start(Service *service, Embla *embla);
 
 int service_stop(Service *service, Embla *embla);
 
+int service_kill(Service *service, Embla *embla);
+
 int service_reap(Service *service, Embla *embla);
 
 #endif

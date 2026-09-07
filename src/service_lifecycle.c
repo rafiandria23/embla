@@ -74,6 +74,28 @@ int service_stop(Service *service, Embla *embla)
 	return embla_terminate(embla, process);
 }
 
+int service_kill(Service *service, Embla *embla)
+{
+	if (service == NULL || embla == NULL)
+	{
+		return -1;
+	}
+
+	if (service_get_state(service) != SERVICE_RUNNING)
+	{
+		return -1;
+	}
+
+	Process *process = service_get_process(service);
+
+	if (process == NULL)
+	{
+		return -1;
+	}
+
+	return embla_kill(embla, process);
+}
+
 int service_reap(Service *service, Embla *embla)
 {
 	if (service == NULL || embla == NULL)

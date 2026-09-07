@@ -11,13 +11,10 @@ ServiceRegistry *service_registry_create(void);
 
 void service_registry_destroy(ServiceRegistry *registry);
 
-int service_registry_register(
-	ServiceRegistry *registry,
-	Service *service);
+int service_registry_register(ServiceRegistry *registry, Service *service);
 
-Service *service_registry_get(
-	const ServiceRegistry *registry,
-	const char *name);
+Service *service_registry_get(const ServiceRegistry *registry, const char *name);
+Service *service_registry_get_at(const ServiceRegistry *registry, size_t index);
 
 size_t service_registry_count(const ServiceRegistry *registry);
 
