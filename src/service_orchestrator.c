@@ -8,6 +8,7 @@
 #include "embla/process_manager.h"
 #include "embla/service_lifecycle.h"
 #include "embla/service_orchestrator.h"
+#include "embla/service_restart.h"
 
 #define SERVICE_ORCHESTRATOR_KILL_WAIT_SECONDS 2.0
 
@@ -101,10 +102,7 @@ int service_registry_compute_start_order(
 	Service **out_order,
 	size_t *out_count)
 {
-	if (
-		registry == NULL ||
-		out_order == NULL ||
-		out_count == NULL)
+	if (registry == NULL || out_order == NULL || out_count == NULL)
 	{
 		return -1;
 	}
@@ -226,9 +224,7 @@ int service_registry_start_all(ServiceRegistry *registry, Embla *embla)
 				(size_t)j);
 			Service *dep = service_registry_get(registry, dep_name);
 
-			if (
-				dep == NULL ||
-				service_get_state(dep) != SERVICE_RUNNING)
+			if (dep == NULL || service_get_state(dep) != SERVICE_RUNNING)
 			{
 				all_deps_running = 0;
 				break;
@@ -256,6 +252,62 @@ int service_registry_start_all(ServiceRegistry *registry, Embla *embla)
 	return started;
 }
 
+int service_registry_drain_one_event(Embla *embla)
+{
+	if (embla == NULL)
+	{
+		return -1;
+	}
+
+	HostProcessId host_id;
+	int wait_status;
+	struct rusage usage;
+
+	int poll_result = executor_poll_any(
+		embla_executor(embla),
+		&host_id,
+		&wait_status,
+		&usage);
+
+	if (poll_result < 0)
+	{
+		return -1;
+	}
+
+	if (poll_result == 0)
+	{
+		return 0;
+	}
+
+	Process *event_process = process_manager_get_by_host_id(
+		embla_process_manager(embla),
+		host_id);
+
+	if (event_process == NULL)
+	{
+		embla_log_info("reaped an untracked child process");
+		return 1;
+	}
+
+	if (WIFEXITED(wait_status))
+	{
+		process_set_exit_code(event_process, WEXITSTATUS(wait_status));
+	}
+	else if (WIFSIGNALED(wait_status))
+	{
+		process_set_term_signal(event_process, WTERMSIG(wait_status));
+	}
+	else
+	{
+		return 1;
+	}
+
+	process_transition(event_process, PROCESS_TERMINATED);
+	executor_apply_rusage(event_process, &usage);
+
+	return 1;
+}
+
 static int service_orchestrator_wait_for_termination(
 	Service *service,
 	Embla *embla,
@@ -275,60 +327,21 @@ static int service_orchestrator_wait_for_termination(
 			return -1;
 		}
 
-		HostProcessId host_id;
-		int wait_status;
-		struct rusage usage;
+		int drain_result = service_registry_drain_one_event(embla);
 
-		int poll_result = executor_poll_any(
-			embla_executor(embla),
-			&host_id,
-			&wait_status,
-			&usage);
-
-		if (poll_result < 0)
+		if (drain_result < 0)
 		{
 			return -1;
 		}
 
-		if (poll_result == 0)
+		if (drain_result == 0)
 		{
 			struct timespec tiny = {
 				.tv_sec = 0,
 				.tv_nsec = 5000000};
 
 			nanosleep(&tiny, NULL);
-
-			continue;
 		}
-
-		Process *event_process = process_manager_get_by_host_id(
-			embla_process_manager(embla),
-			host_id);
-
-		if (event_process == NULL)
-		{
-			continue;
-		}
-
-		if (WIFEXITED(wait_status))
-		{
-			process_set_exit_code(
-				event_process,
-				WEXITSTATUS(wait_status));
-		}
-		else if (WIFSIGNALED(wait_status))
-		{
-			process_set_term_signal(
-				event_process,
-				WTERMSIG(wait_status));
-		}
-		else
-		{
-			continue;
-		}
-
-		process_transition(event_process, PROCESS_TERMINATED);
-		executor_apply_rusage(event_process, &usage);
 	}
 
 	return 0;
@@ -424,4 +437,52 @@ int service_registry_stop_all(
 	free(order);
 
 	return stopped;
+}
+
+int service_registry_supervise(
+	ServiceRegistry *registry,
+	Embla *embla,
+	double stop_timeout_seconds)
+{
+	if (registry == NULL || embla == NULL)
+	{
+		return -1;
+	}
+
+	if (service_registry_start_all(registry, embla) < 0)
+	{
+		embla_log_error("failed to start services during supervise");
+		return -1;
+	}
+
+	while (!embla_shutdown_was_requested())
+	{
+		while (service_registry_drain_one_event(embla) == 1)
+		{
+			// keep draining until none remain
+		}
+
+		size_t count = service_registry_count(registry);
+
+		for (size_t i = 0; i < count; i++)
+		{
+			Service *service = service_registry_get_at(registry, i);
+
+			if (service_tick(service, embla) == SERVICE_TICK_ERROR)
+			{
+				embla_log_error("service tick reported an error");
+			}
+		}
+
+		struct timespec tick_interval = {
+			.tv_sec = 0,
+			.tv_nsec = 1000000};
+
+		nanosleep(&tick_interval, NULL);
+	}
+
+	return service_registry_stop_all(
+		registry,
+		embla,
+		stop_timeout_seconds);
 }

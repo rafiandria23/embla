@@ -58,4 +58,9 @@ int embla_continue_group(Embla *embla, ProcessGroup *group);
 int embla_terminate_group(Embla *embla, ProcessGroup *group);
 int embla_kill_group(Embla *embla, ProcessGroup *group);
 
+void embla_install_shutdown_handlers(void);
+int embla_shutdown_was_requested(void);
+void embla_request_shutdown(void);
+void embla_clear_shutdown_request(void);
+
 #endif

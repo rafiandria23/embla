@@ -12,6 +12,8 @@
 #include "embla/scheduler.h"
 #include "embla/executor.h"
 
+static volatile sig_atomic_t embla_shutdown_flag = 0;
+
 struct Embla
 {
 	ProcessManager *process_manager;
@@ -161,8 +163,8 @@ static int embla_handle_child_event(
 
 	if (process == NULL)
 	{
-		embla_log_error("received event for unknown process");
-		return -1;
+		embla_log_info("reaped an untracked child process");
+		return 0;
 	}
 
 	if (WIFEXITED(wait_status))
@@ -909,4 +911,37 @@ int embla_kill_group(Embla *embla, ProcessGroup *group)
 		embla,
 		group,
 		SIGKILL);
+}
+
+static void embla_shutdown_signal_handler(int signum)
+{
+	(void)signum;
+	embla_shutdown_flag = 1;
+}
+
+void embla_install_shutdown_handlers(void)
+{
+	struct sigaction action;
+
+	action.sa_handler = embla_shutdown_signal_handler;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+
+	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGINT, &action, NULL);
+}
+
+int embla_shutdown_was_requested(void)
+{
+	return embla_shutdown_flag != 0;
+}
+
+void embla_request_shutdown(void)
+{
+	embla_shutdown_flag = 1;
+}
+
+void embla_clear_shutdown_request(void)
+{
+	embla_shutdown_flag = 0;
 }

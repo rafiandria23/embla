@@ -18,4 +18,11 @@ int service_registry_stop_all(
 	Embla *embla,
 	double timeout_seconds);
 
+int service_registry_drain_one_event(Embla *embla);
+
+int service_registry_supervise(
+	ServiceRegistry *registry,
+	Embla *embla,
+	double stop_timeout_seconds);
+
 #endif
